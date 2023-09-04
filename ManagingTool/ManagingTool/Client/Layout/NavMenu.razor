@@ -1,49 +1,31 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">ManagingTool</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+﻿<Header Class="header" Style="width:100%">
+    <div style="display:inline-block;">
+        <h4 style="color:white"><Icon Type="setting" Theme="outline" /> ManagingTool</h4>
     </div>
-</div>
-
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="Lookup_Specific_User">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Lookup Specific User
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="Lookup_Multiple_Users">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Lookup Multiple Users
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="SendMail">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Send Mail
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="RetrieveItem">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Retrieve Item
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="SetCampaign">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Set Campaign
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
-@code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
-}
+    <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" Style="display:inline-block">
+        <MenuItem Key="1" RouterLink="/Lookup_Specific_User">
+            <Icon Type="user" Theme="outline" />
+            Lookup Specific User
+        </MenuItem>
+        <MenuItem Key="2" RouterLink="/Lookup_Multiple_Users">
+            <Icon Type="user" Theme="outline" />
+            Lookup Multiple Users
+        </MenuItem>
+        <MenuItem Key="3" RouterLink="/SendMail">
+            <Icon Type="mail" Theme="outline" />
+            Send Mail
+        </MenuItem>
+        <MenuItem Key="4" RouterLink="/RetrieveItem">
+            <Icon Type="import" Theme="outline" />
+            Retrieve Item
+        </MenuItem>
+        <MenuItem Key="5" RouterLink="/SetCampaign">
+            <Icon Type="calendar" Theme="outline" />
+            Set Campaign
+        </MenuItem>
+        <MenuItem Key="6" RouterLink="/Logout">
+            <Icon Type="logout" Theme="outline" />
+            Logout
+        </MenuItem>
+    </Menu>
+</Header>

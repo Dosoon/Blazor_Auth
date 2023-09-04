@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33815.320
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManagingTool.Server", "ManagingTool\Server\ManagingTool.Server.csproj", "{DC2FC0F6-A979-45F0-B826-7AAE46EB1CAD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ManagingTool.Server", "ManagingTool\Server\ManagingTool.Server.csproj", "{DC2FC0F6-A979-45F0-B826-7AAE46EB1CAD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManagingTool.Client", "ManagingTool\Client\ManagingTool.Client.csproj", "{3F9CEF96-EDAA-47CE-934F-B230B64DD3F4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ManagingTool.Client", "ManagingTool\Client\ManagingTool.Client.csproj", "{3F9CEF96-EDAA-47CE-934F-B230B64DD3F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManagingTool.Shared", "ManagingTool\Shared\ManagingTool.Shared.csproj", "{5FD1158E-1767-495B-AE0C-CAA4F5DE0696}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ManagingTool.Shared", "ManagingTool\Shared\ManagingTool.Shared.csproj", "{5FD1158E-1767-495B-AE0C-CAA4F5DE0696}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

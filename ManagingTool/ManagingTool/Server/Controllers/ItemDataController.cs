@@ -4,8 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Json;
 using ManagingTool.Shared.DTO;
 using System.Net.Http;
+using Microsoft.AspNetCore.Authorization;
 
-
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ItemData : ControllerBase

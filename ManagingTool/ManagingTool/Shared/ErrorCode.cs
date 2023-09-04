@@ -1,6 +1,7 @@
 ﻿public enum ErrorCode : UInt16
 {
     None = 0,
+    Unauthorized = 1,
 
     // Managing Error
     GetUserDataByUserIdFailException = 11001,

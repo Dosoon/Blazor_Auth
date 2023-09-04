@@ -5,6 +5,10 @@
 @using AntDesign.Core.Extensions
 @using ManagingTool.Shared.DTO
 @inject UserService UserDataService
+@inject IConfirmService ConfirmService
+@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inherits AuthPage
 
 
 <h3>Lookup Multiple Users</h3>

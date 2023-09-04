@@ -2,8 +2,7 @@
 @inject ItemService ItemService
 @inject MailService MailService
 @inject IMessageService _message
-
-@*@inject Blazored.LocalStorage.ILocalStorageService localStorage*@
+@inherits AuthPage
 
 
 <h3>Send Mail</h3>
@@ -86,6 +85,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         var itemTableData = await ItemService.GetItemTable();
 
         itemTable.itemWeapon = itemTableData.Item_Weapon;

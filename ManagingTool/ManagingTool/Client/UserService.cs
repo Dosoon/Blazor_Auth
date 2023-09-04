@@ -1,12 +1,20 @@
 ﻿using System.Net.Http.Json;
 using ManagingTool.Shared.DTO;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
+using System.Net.Http.Headers;
 
 namespace ManagingTool.Client;
 
 public class UserService
 {
     public static HttpClient _httpClient { get; set; }
+    private readonly IJSRuntime _jsRuntime;
+
+    public UserService(IJSRuntime jsRuntime)
+    {
+        _jsRuntime = jsRuntime;
+    }
 
     public async Task<GetUserBasicInfoListResponse> GetUserBasicInfo(Int64 userId)
     {
@@ -14,6 +22,9 @@ public class UserService
         {
             UserID = userId
         };
+
+        var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
 
         var response = await _httpClient.PostAsJsonAsync("api/UserData/GetUserBasicInfo", request);
         var responseDTO = await response.Content.ReadFromJsonAsync<GetUserBasicInfoListResponse>();
@@ -35,6 +46,9 @@ public class UserService
             MaxValue = maxValue
         };
 
+        var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
+
         var response = await _httpClient.PostAsJsonAsync("api/UserData/GetMultipleUserBasicInfo", request);
         var responseDTO = await response.Content.ReadFromJsonAsync<GetUserBasicInfoListResponse>();
 
@@ -52,6 +66,9 @@ public class UserService
         {
             UserInfo = userInfo
         };
+
+        var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
 
         var response = await _httpClient.PostAsJsonAsync("api/UserData/UpdateUserBasicInfo", request);
         var responseDTO = await response.Content.ReadFromJsonAsync<UpdateUserBasicInformationResponse>();

@@ -1,6 +1,16 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
+﻿@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject IConfirmService ConfirmService
+
+<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        @if (NavigationManager.Uri.Equals(NavigationManager.BaseUri, StringComparison.OrdinalIgnoreCase))
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        } else
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(AfterLoginLayout)" />
+        }
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
@@ -12,3 +22,35 @@
 </Router>
 
 <AntContainer /> 
+
+@code {
+
+    // protected override void OnInitialized()
+    // {
+    //     // 페이지 이동 Intercept
+    //     NavigationManager.LocationChanged += HandleLocationChanged;
+    // }
+
+    // async Task<bool> CheckSession()
+    // {
+    //     await ConfirmService.Show("세션 체크", "세션 체크", ConfirmButtons.OK);
+    //     var accessToken = await sessionStorage.GetItemAsync<string>("accesstoken");
+    //     if (accessToken == null)
+    //     {
+    //         return false;
+    //     }
+
+    //     return true;
+    // }
+
+    // async Task MoveToLogin()
+    // {
+    //     await ConfirmService.Show("세션이 만료되었습니다. 다시 로그인해주세요.", "세션 만료", ConfirmButtons.OK);
+    //     NavigationManager.NavigateTo("/", true);
+    // }
+
+    // private async void HandleLocationChanged(object sender, LocationChangedEventArgs e)
+    // {
+    //     await CheckSession();
+    // }
+}

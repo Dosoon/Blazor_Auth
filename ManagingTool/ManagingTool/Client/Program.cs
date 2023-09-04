@@ -9,6 +9,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<ItemService>();
 builder.Services.AddSingleton<MailService>();
+builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddAntDesign();
 builder.Services.AddBlazoredSessionStorage();
@@ -25,5 +26,6 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 UserService._httpClient = builder.Services.BuildServiceProvider().GetRequiredService<HttpClient>();
 ItemService._httpClient = builder.Services.BuildServiceProvider().GetRequiredService<HttpClient>();
 MailService._httpClient = builder.Services.BuildServiceProvider().GetRequiredService<HttpClient>();
+AuthService._httpClient = builder.Services.BuildServiceProvider().GetRequiredService<HttpClient>();
 
 await builder.Build().RunAsync();

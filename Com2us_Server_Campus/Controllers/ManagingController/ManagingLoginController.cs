@@ -38,6 +38,14 @@ public class ManagingLogin : ControllerBase
             return response;
         }
 
+        if (userData == null)
+        {
+            _logger.ZLogErrorWithPayload(LogManager.MakeEventId(ErrorCode.LoginFailed), request, "Login Failed");
+
+            response.Result = ErrorCode.LoginFailed;
+            return response;
+        }
+
         // 토큰 생성 및 Response 제공
         var (accessToken, refreshToken) = CreateTokens(userData.AccountId);
 

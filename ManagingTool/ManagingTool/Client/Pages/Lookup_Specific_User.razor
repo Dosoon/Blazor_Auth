@@ -7,7 +7,7 @@
 @inject ItemService ItemService
 @inject MailService MailService
 @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
-
+@inherits AuthPage
 
 <h3>Lookup Specific User</h3>
 
@@ -96,7 +96,6 @@
     </TabPane>
 </Tabs>
 
-
 @code {
 
     IDictionary<Int64, (bool edit, UserInfo data)> editCache = new Dictionary<Int64, (bool edit, UserInfo data)>();
@@ -111,6 +110,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         await GetSession();
     }
 
@@ -138,6 +138,7 @@
         {
             userMailDataSet = sessionUserMailDataSet;
         }
+
     }
 
     async Task GetUserData()

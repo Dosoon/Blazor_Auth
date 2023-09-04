@@ -1,0 +1,39 @@
+﻿@inject IConfirmService ConfirmService
+@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+@inject AuthService AuthService
+
+
+@code {
+
+    async Task MoveToLogin(bool resetToken = false)
+    {       
+        if (resetToken)
+        {
+            await sessionStorage.SetItemAsync<string>("accesstoken", "");
+        }
+        NavigationManager.NavigateTo("/", true);
+    }
+
+    async Task<(bool, bool)> CheckSession()
+    {
+        var accessToken = await sessionStorage.GetItemAsync<string>("accesstoken");
+        if (accessToken == null || accessToken.Equals(""))
+        {
+            return (false, false);
+        }
+
+        return (await AuthService.CheckToken(accessToken) == ErrorCode.None, true);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (verified, resetToken) = await CheckSession();
+
+        if (verified == false)
+        {
+            await MoveToLogin(resetToken);
+        }
+    }
+}

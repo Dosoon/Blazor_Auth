@@ -9,6 +9,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using ZLogger;
 using WebAPIServer.DataClass;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("Managing/[controller]")]
@@ -24,6 +25,7 @@ public class UserData : ControllerBase
 		_gameDb = gameDb;
     }
 
+	[Authorize]
     [HttpPost("GetUserBasicInfo")]
 	public async Task<GetUserBasicInfoListResponse> Post(GetUserBasicInfoRequest request)
 	{
