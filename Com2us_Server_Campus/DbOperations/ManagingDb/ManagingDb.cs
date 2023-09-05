@@ -81,7 +81,34 @@ public class ManagingDb : IManagingDb
 
             _logger.ZLogError(LogManager.MakeEventId(errorCode), ex, "UpdateRefreshToken Exception");
 
-            return errorCode;
+            return errorCode;   
+        }
+    }
+
+    public async Task<string> GetRefreshTokenByAccountId(long accountId)
+    {
+        try
+        {
+            // AccountId에 해당하는 유저의 리프레시 토큰을 가져옴
+            var token = (await _queryFactory.Query("managing_account")
+                                            .Where("AccountId", accountId)
+                                            .Select("RefreshToken")
+                                            .GetAsync<string>()).FirstOrDefault();
+
+            if (token == null || token == string.Empty)
+            {
+                return "";
+            }
+
+            return token;
+        }
+        catch (Exception ex)
+        {
+            var errorCode = ErrorCode.GetRefreshTokenByAccountIdException;
+
+            _logger.ZLogError(LogManager.MakeEventId(errorCode), ex, "GetRefreshTokenByAccountId Exception");
+
+            return "";
         }
     }
 }

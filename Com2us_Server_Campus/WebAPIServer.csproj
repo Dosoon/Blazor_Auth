@@ -64,6 +64,5 @@
     <Folder Include="ReqRes\Enhance_ReqRes\" />
     <Folder Include="ReqRes\InApp_ReqRes\" />
     <Folder Include="DbOperations\AccountDb\" />
-    <Folder Include="Util\" />
   </ItemGroup>
 </Project>

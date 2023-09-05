@@ -9,11 +9,11 @@ namespace ManagingTool.Client;
 public class UserService
 {
     public static HttpClient _httpClient { get; set; }
-    private readonly IJSRuntime _jsRuntime;
+    readonly TokenManager _tokenManager;
 
-    public UserService(IJSRuntime jsRuntime)
+    public UserService(TokenManager tokenManager)
     {
-        _jsRuntime = jsRuntime;
+        _tokenManager = tokenManager;
     }
 
     public async Task<GetUserBasicInfoListResponse> GetUserBasicInfo(Int64 userId)
@@ -23,10 +23,17 @@ public class UserService
             UserID = userId
         };
 
-        var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(accessToken, refreshToken);
 
         var response = await _httpClient.PostAsJsonAsync("api/UserData/GetUserBasicInfo", request);
+        await _tokenManager.UpdateAccessTokenIfPresent(response);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return new GetUserBasicInfoListResponse { errorCode = ErrorCode.Unauthorized };
+        }
+
         var responseDTO = await response.Content.ReadFromJsonAsync<GetUserBasicInfoListResponse>();
 
         if (responseDTO == null)
@@ -46,10 +53,17 @@ public class UserService
             MaxValue = maxValue
         };
 
-        var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(accessToken, refreshToken);
 
         var response = await _httpClient.PostAsJsonAsync("api/UserData/GetMultipleUserBasicInfo", request);
+        await _tokenManager.UpdateAccessTokenIfPresent(response);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return new List<UserInfo>();
+        }
+
         var responseDTO = await response.Content.ReadFromJsonAsync<GetUserBasicInfoListResponse>();
 
         if (responseDTO == null)
@@ -67,10 +81,12 @@ public class UserService
             UserInfo = userInfo
         };
 
-        var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(accessToken, refreshToken);
 
         var response = await _httpClient.PostAsJsonAsync("api/UserData/UpdateUserBasicInfo", request);
+        await _tokenManager.UpdateAccessTokenIfPresent(response);
+
         var responseDTO = await response.Content.ReadFromJsonAsync<UpdateUserBasicInformationResponse>();
 
         if (responseDTO == null)
@@ -79,6 +95,13 @@ public class UserService
         }
 
         return responseDTO;
+    }
+
+    void AttachTokensToRequestHeader(string accessToken, string refreshToken)
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
+        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
     }
 }
 

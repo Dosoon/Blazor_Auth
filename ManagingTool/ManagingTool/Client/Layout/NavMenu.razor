@@ -1,4 +1,7 @@
-﻿<Header Class="header" Style="width:100%">
+﻿@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+<Header Class="header" Style="width:100%">
     <div style="display:inline-block;">
         <h4 style="color:white"><Icon Type="setting" Theme="outline" /> ManagingTool</h4>
     </div>
@@ -23,9 +26,18 @@
             <Icon Type="calendar" Theme="outline" />
             Set Campaign
         </MenuItem>
-        <MenuItem Key="6" RouterLink="/Logout">
+        <MenuItem Key="6" @onclick="Logout">
             <Icon Type="logout" Theme="outline" />
             Logout
         </MenuItem>
     </Menu>
 </Header>
+
+@code {
+
+    async Task Logout()
+    {
+        await sessionStorage.RemoveItemAsync("accesstoken");
+        NavigationManager.NavigateTo("/");
+    }
+}

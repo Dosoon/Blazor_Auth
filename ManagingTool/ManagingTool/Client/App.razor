@@ -22,35 +22,3 @@
 </Router>
 
 <AntContainer /> 
-
-@code {
-
-    // protected override void OnInitialized()
-    // {
-    //     // 페이지 이동 Intercept
-    //     NavigationManager.LocationChanged += HandleLocationChanged;
-    // }
-
-    // async Task<bool> CheckSession()
-    // {
-    //     await ConfirmService.Show("세션 체크", "세션 체크", ConfirmButtons.OK);
-    //     var accessToken = await sessionStorage.GetItemAsync<string>("accesstoken");
-    //     if (accessToken == null)
-    //     {
-    //         return false;
-    //     }
-
-    //     return true;
-    // }
-
-    // async Task MoveToLogin()
-    // {
-    //     await ConfirmService.Show("세션이 만료되었습니다. 다시 로그인해주세요.", "세션 만료", ConfirmButtons.OK);
-    //     NavigationManager.NavigateTo("/", true);
-    // }
-
-    // private async void HandleLocationChanged(object sender, LocationChangedEventArgs e)
-    // {
-    //     await CheckSession();
-    // }
-}

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+var configuration = builder.Configuration;
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
@@ -22,7 +23,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 ValidateAudience = false,
                 ValidateIssuerSigningKey = true,
                 ValidateLifetime = true,    // 토큰 유효성 검증 여부
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("Com2usGenieusInternship")) // 비밀 서명 키
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["SigningKey"]!)) // 비밀 서명 키
             };
         });
 

@@ -21,6 +21,13 @@ public class ManagingLogin : ControllerBase
         _logger = logger;
         _managingDb = managingDb;
     }
+    
+    [Authorize]
+    [HttpGet("/CheckToken")]
+    public ErrorCode CheckToken()
+    {
+        return ErrorCode.None;
+    }
 
     [HttpPost]
     public async Task<ManagingLoginResponse> Post(ManagingLoginRequest request)
@@ -47,7 +54,7 @@ public class ManagingLogin : ControllerBase
         }
 
         // 토큰 생성 및 Response 제공
-        var (accessToken, refreshToken) = CreateTokens(userData.AccountId);
+        var (accessToken, refreshToken) = TokenManager.CreateTokens(userData.AccountId);
 
         var updateErrorCode = await _managingDb.UpdateRefreshToken(userData.AccountId, refreshToken);
         if (updateErrorCode != ErrorCode.None)
@@ -65,34 +72,5 @@ public class ManagingLogin : ControllerBase
         response.AccessToken = accessToken;
 
         return response;
-    }
-
-    Tuple<string, string> CreateTokens(Int64 accountId)
-    {
-        var accessToken = CreateToken(true, accountId);
-        var refreshToken = CreateToken(false, accountId);
-        
-        return new Tuple<string, string>(accessToken, refreshToken);
-    }
-
-    string CreateToken(bool isAccessToken, Int64 accountId)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes("Com2usGenieusInternship"); // 서명 키
-
-        var expires = isAccessToken ? DateTime.UtcNow.AddHours(1) : DateTime.UtcNow.AddDays(1);
-
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(new Claim[]
-            {
-            new Claim(ClaimTypes.NameIdentifier, accountId.ToString()), // 사용자 이름 또는 ID
-            }),
-            Expires = expires, // 토큰 만료 시간 설정
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
     }
 }

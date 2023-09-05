@@ -55,6 +55,7 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+
         campaigns.Add(new Campaign { Title = "여름방학 이벤트", Content = "캠페인 기간동안 사냥 획득 경험치 30% 상승", CampaignType = 1, BoostValue = 0.3 });
         campaigns.Add(new Campaign { Title = "점심 이벤트", Content = "기간내 접속시 재화 지급", CampaignType = 2, CampaignItemCode = 1, CampaignItemCount = 1000 });
         campaigns.Add(new Campaign { Title = "신규 이벤트", Content = "기간내 최초 접속시 아이템 지급", CampaignType = 2, CampaignItemCode = 2, CampaignItemCount = 1 });

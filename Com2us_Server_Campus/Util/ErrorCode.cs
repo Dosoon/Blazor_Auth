@@ -143,5 +143,6 @@
     ManagingUpdateRefreshTokenException = 11012,
     InvalidJWTToken = 11013,
 	LoginFailed = 11014,
+    GetRefreshTokenByAccountIdException = 11015,
 
 }

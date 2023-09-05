@@ -143,18 +143,36 @@
 
     async Task GetUserData()
     {
-        await GetUserBasicInfo();
-        await GetUserItemList();
-        await GetUserMail();
+        if (await GetUserBasicInfo() == false)
+        {
+            return;
+        }
+        if (await GetUserItemList() == false)
+        {
+            return;
+        }
+        if (await GetUserMail() == false)
+        {
+            return;
+        }
 
         await sessionStorage.SetItemAsync<Int64>("userid", userId);
     }
 
-    async Task GetUserBasicInfo()
+    async Task<bool> GetUserBasicInfo()
     {
         userDataSet.Clear();
 
         var response = await UserDataService.GetUserBasicInfo(userId);
+        if (response.errorCode != ErrorCode.None)
+        {
+            if (response.errorCode == ErrorCode.Unauthorized)
+            {
+                await MoveToLogin();
+            }
+            return false;
+        }
+
         userDataSet = response.UserInfo;
 
         await sessionStorage.SetItemAsync<List<UserInfo>>("userinfo", userDataSet);
@@ -172,26 +190,50 @@
                 LastLogin = item.LastLogin
             });
         });
+
+        return true;
     }
 
-    async Task GetUserItemList()
+    async Task<bool> GetUserItemList()
     {
         userItemDataSet.Clear();
 
         var response = await ItemService.GetUserItemList("UserID", userId);
+        if (response.errorCode != ErrorCode.None)
+        {
+            if (response.errorCode == ErrorCode.Unauthorized)
+            {
+                await MoveToLogin();
+            }
+            return false;
+        }
+
         userItemDataSet = response.UserItem;
 
         await sessionStorage.SetItemAsync<List<UserItem>>("useritem", userItemDataSet);
+
+        return true;
     }
 
-    async Task GetUserMail()
+    async Task<bool> GetUserMail()
     {
         userMailDataSet.Clear();
 
         var response = await MailService.GetUserMailList(userId);
+        if (response.errorCode != ErrorCode.None)
+        {
+            if (response.errorCode == ErrorCode.Unauthorized)
+            {
+                await MoveToLogin();
+            }
+            return false;
+        }
+
         userMailDataSet = response.UserMail;
 
         await sessionStorage.SetItemAsync<List<MailData>>("maildata", userMailDataSet);
+
+        return true;
     }
 
     void startEdit(Int64 id)

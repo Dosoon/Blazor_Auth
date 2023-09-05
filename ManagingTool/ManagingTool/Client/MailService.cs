@@ -8,14 +8,14 @@ namespace ManagingTool.Client;
 public class MailService
 {
     public static HttpClient _httpClient { get; set; }
-    private readonly IJSRuntime _jsRuntime;
+    private readonly TokenManager _tokenManager;
 
-    public MailService(IJSRuntime jsRuntime)
-	{
-		_jsRuntime = jsRuntime;
-	}
+    public MailService(TokenManager tokenManager)
+    {
+        _tokenManager = tokenManager;
+    }
 
-	public async Task<SendMailResponse> SendMail(MailForm mailForm, Int64 userId)
+    public async Task<SendMailResponse> SendMail(MailForm mailForm, Int64 userId)
     {
         var request = new SendMailRequest
         {
@@ -23,10 +23,12 @@ public class MailService
             UserID = userId
         };
 
-		var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
-		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(accessToken, refreshToken);
 
-		var response = await _httpClient.PostAsJsonAsync("api/MailData/SendMail", request);
+        var response = await _httpClient.PostAsJsonAsync("api/MailData/SendMail", request);
+        await _tokenManager.UpdateAccessTokenIfPresent(response);
+
         var responseDTO = await response.Content.ReadFromJsonAsync<SendMailResponse>();
 
         return responseDTO;
@@ -39,13 +41,22 @@ public class MailService
             UserID = userId
         };
 
-		var sessionToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
-		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sessionToken);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(accessToken, refreshToken);
 
-		var response = await _httpClient.PostAsJsonAsync("api/MailData/GetUserMailList", request);
+        var response = await _httpClient.PostAsJsonAsync("api/MailData/GetUserMailList", request);
+        await _tokenManager.UpdateAccessTokenIfPresent(response);
+
         var responseDTO = await response.Content.ReadFromJsonAsync<GetUserMailListResponse>();
 
         return responseDTO;
+    }
+
+    void AttachTokensToRequestHeader(string accessToken, string refreshToken)
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
+        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
     }
 }
 

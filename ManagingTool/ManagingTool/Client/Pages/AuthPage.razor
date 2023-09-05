@@ -3,15 +3,17 @@
 @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
 @inject AuthService AuthService
+@inject IJSRuntime jsRuntime
 
 
 @code {
 
-    async Task MoveToLogin(bool resetToken = false)
+    protected async Task MoveToLogin(bool resetToken = false)
     {       
         if (resetToken)
         {
             await sessionStorage.SetItemAsync<string>("accesstoken", "");
+            await sessionStorage.SetItemAsync<string>("refreshtoken", "");
         }
         NavigationManager.NavigateTo("/", true);
     }
@@ -24,7 +26,8 @@
             return (false, false);
         }
 
-        return (await AuthService.CheckToken(accessToken) == ErrorCode.None, true);
+        var verified = await AuthService.CheckToken();
+        return (verified == ErrorCode.None, true);
     }
 
     protected override async Task OnInitializedAsync()

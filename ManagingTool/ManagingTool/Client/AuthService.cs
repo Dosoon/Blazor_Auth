@@ -9,18 +9,29 @@ namespace ManagingTool.Client;
 public class AuthService
 {
     public static HttpClient _httpClient { get; set; }
+    private readonly TokenManager _tokenManager;
 
-    public async Task<ErrorCode> CheckToken(string accessToken)
+    public AuthService(TokenManager tokenManager)
     {
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        _tokenManager = tokenManager;
+    }
+
+    public async Task<ErrorCode> CheckToken()
+    {
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(accessToken, refreshToken);
 
         var response = await _httpClient.GetAsync("api/Auth");
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        await _tokenManager.UpdateAccessTokenIfPresent(response);
+
+        if (response.StatusCode != HttpStatusCode.OK)
         {
             return ErrorCode.Unauthorized;
         }
 
-        return ErrorCode.None;
+        var errorCode = await response.Content.ReadAsStringAsync();
+
+        return (ErrorCode)UInt16.Parse(errorCode);
     }
 
     public async Task<ManagingLoginResponse> Login(string email, string pwd)
@@ -32,8 +43,17 @@ public class AuthService
         };
 
         var response = await _httpClient.PostAsJsonAsync("api/Auth/Login", request);
+        await _tokenManager.UpdateAccessTokenIfPresent(response);
+
         var responseDTO = await response.Content.ReadFromJsonAsync<ManagingLoginResponse>();
 
         return responseDTO;
+    }
+
+    void AttachTokensToRequestHeader(string accessToken, string refreshToken)
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
+        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
     }
 }

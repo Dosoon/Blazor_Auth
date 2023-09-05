@@ -102,6 +102,15 @@
         UserItemDataSet.Clear();
 
         var response = await ItemService.GetUserItemList(searchType, searchValue);
+        if (response.errorCode != ErrorCode.None)
+        {
+            if (response.errorCode == ErrorCode.Unauthorized)
+            {
+                await MoveToLogin();
+            }
+            return;
+        }
+
         UserItemDataSet = response.UserItem;
     }
 

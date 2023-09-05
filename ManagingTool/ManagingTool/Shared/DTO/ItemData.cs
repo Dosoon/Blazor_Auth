@@ -6,6 +6,7 @@ public class GetItemTableRequest
 }
 public class GetItemTableResponse
 {
+    public ErrorCode errorCode { get; set; }
     public List<ItemAttribute> Item_Weapon { get; set; }
     public List<ItemAttribute> Item_Armor { get; set; }
     public List<ItemAttribute> Item_Clothes { get; set; }

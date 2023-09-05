@@ -60,7 +60,7 @@
 
 <button class="btn btn-primary" @onclick="SendMailByUserID">Send</button>
 
-@code {
+ @code {
 
 
     string title = string.Empty;
@@ -87,6 +87,14 @@
     {
         await base.OnInitializedAsync();
         var itemTableData = await ItemService.GetItemTable();
+        if (itemTableData.errorCode != ErrorCode.None)
+        {
+            if (itemTableData.errorCode == ErrorCode.Unauthorized)
+            {
+                await MoveToLogin();
+            }
+            return;
+        }
 
         itemTable.itemWeapon = itemTableData.Item_Weapon;
         itemTable.itemArmor = itemTableData.Item_Armor;

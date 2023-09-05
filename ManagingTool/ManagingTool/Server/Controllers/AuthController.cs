@@ -5,6 +5,8 @@ using System.Net.Http.Json;
 using ManagingTool.Shared.DTO;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
+using System.Net;
+using System.Net.Http.Headers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -19,10 +21,19 @@ public class Auth : ControllerBase
         _httpClient = httpClient;
     }
 
-    [Authorize]
     [HttpGet]
-    public ErrorCode Post()
+    public async Task<ErrorCode> CheckToken()
     {
+        AttachTokensToRequestHeader();
+
+        var response = await _httpClient.GetAsync("CheckToken");
+        AttachNewTokenToResponseIfPresent(ref response);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            return ErrorCode.Unauthorized;
+        }
+
         return ErrorCode.None;
     }
 
@@ -38,5 +49,25 @@ public class Auth : ControllerBase
         }
 
         return responseDTO;
+    }
+    void AttachTokensToRequestHeader()
+    {
+        var accessToken = HttpContext.Request.Headers["Authorization"];
+        var refreshToken = HttpContext.Request.Headers["refresh_token"].FirstOrDefault();
+        _httpClient.DefaultRequestHeaders.Authorization = AuthenticationHeaderValue.Parse(accessToken);
+        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
+        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
+    }
+    void AttachNewTokenToResponseIfPresent(ref HttpResponseMessage res)
+    {
+        if (res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessTokenEnum))
+        {
+            var newAccessToken = newAccessTokenEnum.FirstOrDefault();
+            if (newAccessToken != null || newAccessToken != string.Empty)
+            {
+                _httpClient.DefaultRequestHeaders.Remove("X-NEW-ACCESS-TOKEN");
+                _httpClient.DefaultRequestHeaders.Add("X-NEW-ACCESS-TOKEN", newAccessToken);
+            }
+        }
     }
 }

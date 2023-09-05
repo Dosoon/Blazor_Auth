@@ -7,6 +7,9 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +25,9 @@ builder.Services.AddSingleton<IRedisDb, RedisDb>();
 builder.Services.AddSingleton<IMasterDb, MasterDb>();
 builder.Services.AddSingleton<IManagingDb, ManagingDb>();
 builder.Services.AddIdGen((int)defaultSetting.GeneratorId);
+
+builder.Services.AddSingleton<TokenManager>();
+TokenManager.Init(configuration);
 
 builder.Services.AddCors(options =>
 {
@@ -42,7 +48,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 ValidateAudience = false,
                 ValidateIssuerSigningKey = true,
                 ValidateLifetime = true,    // 토큰 유효성 검증 여부
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("Com2usGenieusInternship")) // 비밀 서명 키
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["SigningKey"]!)) // 비밀 서명 키
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnAuthenticationFailed = async context =>
+                {
+                    var handler = context.HttpContext.RequestServices.GetRequiredService<TokenManager>();
+                    await handler.OnAuthenticationFailedHandler(context, options);
+                }
             };
         });
 

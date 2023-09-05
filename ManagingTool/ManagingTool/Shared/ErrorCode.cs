@@ -12,5 +12,11 @@
     GetUserItemListFailException = 11006,
     GetUserMailListFailException = 11007,
     RetrieveUserItemFailException = 11008,
-    UpdateUserBasicInfoFailException = 11009
+    UpdateUserBasicInfoFailException = 11009,
+
+    ManagingGetLoginUserDataException = 11010,
+    UpdateRefreshTokenFail = 11011,
+    ManagingUpdateRefreshTokenException = 11012,
+    InvalidJWTToken = 11013,
+    LoginFailed = 11014,
 }
