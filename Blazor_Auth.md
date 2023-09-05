@@ -424,28 +424,7 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 
 @code {
 
-    protected async Task MoveToLogin(bool resetToken = false)
-    {
-        if (resetToken)
-        {
-            await sessionStorage.SetItemAsync<string>("accesstoken", "");
-            await sessionStorage.SetItemAsync<string>("refreshtoken", "");
-        }
-        NavigationManager.NavigateTo("/", true);
-    }
-
-    async Task<(bool, bool)> CheckSession()
-    {
-        var accessToken = await sessionStorage.GetItemAsync<string>("accesstoken");
-        if (accessToken == null || accessToken.Equals(""))
-        {
-            return (false, false);
-        }
-
-        var verified = await AuthService.CheckToken();
-        return (verified == ErrorCode.None, true);
-    }
-
+    // 페이지가 렌더링되기 전 토큰 검사 수행
     protected override async Task OnInitializedAsync()
     {
         var (verified, resetToken) = await CheckSession();
@@ -455,6 +434,34 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
             await MoveToLogin(resetToken);
         }
     }
+
+    // 세션 스토리지의 토큰 값으로 유효성 검사
+    async Task<(bool, bool)> CheckSession()
+    {
+        var accessToken = await sessionStorage.GetItemAsync<string>("accesstoken");
+        if (accessToken == null || accessToken.Equals(""))
+        {
+            return (false, false);
+        }
+
+        // 유효성 검증 결과(verified), 토큰 무효화 여부(resetToken) 리턴
+        var verified = await AuthService.CheckToken();
+        return (verified == ErrorCode.None, true);
+    }
+
+    // 로그인 페이지로 이동
+    protected async Task MoveToLogin(bool resetToken = false)
+    {
+        if (resetToken)
+        {
+            // 무효화 여부가 true면 세션 스토리지의 토큰을 빈 문자열로 만듦
+            await sessionStorage.SetItemAsync<string>("accesstoken", "");
+            await sessionStorage.SetItemAsync<string>("refreshtoken", "");
+        }
+        NavigationManager.NavigateTo("/", true);
+    }
+
+
 }
 ```
 
