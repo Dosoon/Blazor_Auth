@@ -11,7 +11,7 @@
    3. [엔드포인트에 인증 적용하기](#엔드포인트에-인증-적용하기)
    4. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
 5. Client
-   1. [페이지 이동 시 세션 체크](#모든-페이지에-세션-체크-일괄-적용하기)
+   1. [페이지 상속으로 코드 일괄 적용하기](#페이지-상속으로-코드-일괄-적용하기)
    2. [TokenManager](#TokenManager)
    3. [요청 헤더에 토큰 추가하기](#요청-헤더에-토큰-추가하기)
    4. [Access Token 갱신하기](#Access-Token-갱신하기)
@@ -405,7 +405,7 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 
 ---
 
-## 모든 페이지에 세션 체크 일괄 적용하기
+## 페이지 상속으로 코드 일괄 적용하기
 
 이 프로젝트에서는 **페이지 렌더링 전에 토큰을 검사하는 최상위 페이지** `AuthPage`를 정의했다.<br>
 그리고 인증이 필요한 모든 페이지에 `AuthPage`를 상속시켜 모든 페이지에서 세션 체크를 진행하도록 하고 있다.
@@ -496,6 +496,8 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 본 프로젝트에서는 Session Storage에 토큰을 Set하거나 Get해주는<br>
 서비스 클래스 `TokenManager`를 구현해 사용하고 있다.
 
+Session Storage에 접근할 때에는 JSRuntime을 사용한다.
+
 아래는 본 프로젝트에서 구현한 예시 코드이다.
 
 ```csharp
@@ -558,24 +560,38 @@ Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Ref
 아래는 본 프로젝트에서 구현한 예시 코드이다.
 
 ```csharp
-// Controller Class
+// BaseService.cs
 
-void AttachTokensToRequestHeader(string accessToken, string refreshToken)
+// Request Body를 JSON 직렬화하여 Body에 저장
+protected void SerializeReqBody(ref HttpRequestMessage reqMsg, Object reqBody)
 {
-    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-    _httpClient.DefaultRequestHeaders.Remove("refresh_token");
-    _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
+    string requestBody = JsonSerializer.Serialize(reqBody);
+    reqMsg.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
 }
 
-// Controller Action에서의 사용 예시
-public async Task<GetUserBasicInfoListResponse> GetUserBasicInfo(Int64 userId)
+// AccessToken과 RefreshToken을 RequestMessage 헤더에 추가
+protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken, string refreshToken)
 {
-    // request 정의...
+    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+    req.Headers.Remove("refresh_token");
+    req.Headers.Add("refresh_token", refreshToken);
+}
+```
 
+```csharp
+// BaseService를 상속받은 Service 예시
+public async Task<ResponseDTO> Action(RequestDTO request)
+{
+    // RequestMessage 생성
+    var requestMessage = new HttpRequestMessage(HttpMethod.Post, ApiPath);
+    SerializeReqBody(ref requestMessage, request);
+
+    // 헤더에 토큰 추가
     var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-    AttachTokensToRequestHeader(accessToken, refreshToken);
+    AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
 
     // 요청 전송 및 response 처리...
+    // ...
 }
 ```
 
