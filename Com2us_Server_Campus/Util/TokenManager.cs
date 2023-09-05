@@ -71,7 +71,6 @@ public class TokenManager
             var refreshToken = context.Request.Headers["refresh_token"].FirstOrDefault();
             if (refreshToken == null)
             {
-                Console.WriteLine("RTNull");
                 context.Response.StatusCode = 401; // Unauthorized
                 return;
             }
@@ -84,7 +83,6 @@ public class TokenManager
                 // 리프레시 토큰의 만료 시간 확인
                 if (validatedToken.ValidTo < DateTime.UtcNow)
                 {
-                    Console.WriteLine("RTExpired");
                     context.Response.StatusCode = 401; // Unauthorized
                     return;
                 }
@@ -99,7 +97,6 @@ public class TokenManager
             var accountId = TokenManager.GetClaim(refreshToken);
             if (accountId == 0)
             {
-                Console.WriteLine("AccountId");
                 context.Response.StatusCode = 401; // Unauthorized
                 return;
             }

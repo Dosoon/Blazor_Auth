@@ -15,7 +15,7 @@ namespace ManagingTool.Client
 
         protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken, string refreshToken)
         {
-            req.Headers.Authorization = AuthenticationHeaderValue.Parse(accessToken);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
             req.Headers.Remove("refresh_token");
             req.Headers.Add("refresh_token", refreshToken);
         }

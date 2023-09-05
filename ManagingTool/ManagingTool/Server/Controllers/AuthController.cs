@@ -27,7 +27,7 @@ public class Auth : BaseController
     [HttpGet]
     public async Task<ErrorCode> CheckToken()
     {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "CheckToken");
+        var requestMessage = new HttpRequestMessage(HttpMethod.Get, "CheckToken");
         AttachTokensToRequestHeader(ref requestMessage);
 
         var response = await _httpClient.SendAsync(requestMessage);
@@ -35,7 +35,6 @@ public class Auth : BaseController
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            Console.WriteLine("Unauthorized");
             return ErrorCode.Unauthorized;
         }
 

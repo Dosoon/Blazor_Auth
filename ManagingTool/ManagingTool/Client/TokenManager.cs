@@ -18,7 +18,6 @@ namespace ManagingTool.Client
         {
             var accessToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
             var refreshToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "refreshtoken");
-
             return (accessToken, refreshToken);
         }
 
