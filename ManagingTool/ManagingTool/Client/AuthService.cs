@@ -6,7 +6,7 @@ using ManagingTool.Shared.DTO;
 
 namespace ManagingTool.Client;
 
-public class AuthService
+public class AuthService : BaseService
 {
     public static HttpClient _httpClient { get; set; }
     private readonly TokenManager _tokenManager;
@@ -18,10 +18,11 @@ public class AuthService
 
     public async Task<ErrorCode> CheckToken()
     {
+        var requestMessage = new HttpRequestMessage(HttpMethod.Get, "api/Auth");
         var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
 
-        var response = await _httpClient.GetAsync("api/Auth");
+        var response = await _httpClient.SendAsync(requestMessage);
         await _tokenManager.UpdateAccessTokenIfPresent(response);
 
         if (response.StatusCode != HttpStatusCode.OK)
@@ -36,24 +37,20 @@ public class AuthService
 
     public async Task<ManagingLoginResponse> Login(string email, string pwd)
     {
-        var request = new ManagingLoginRequest
+        var requestBody = new ManagingLoginRequest
         {
             Email = email,
             Password = pwd
         };
 
-        var response = await _httpClient.PostAsJsonAsync("api/Auth/Login", request);
+        var request = new HttpRequestMessage(HttpMethod.Post, "api/Auth/Login");
+        SerializeReqBody(ref request, requestBody);
+
+        var response = await _httpClient.SendAsync(request);
         await _tokenManager.UpdateAccessTokenIfPresent(response);
 
         var responseDTO = await response.Content.ReadFromJsonAsync<ManagingLoginResponse>();
 
         return responseDTO;
-    }
-
-    void AttachTokensToRequestHeader(string accessToken, string refreshToken)
-    {
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
-        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
     }
 }

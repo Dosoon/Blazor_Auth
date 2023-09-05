@@ -10,12 +10,12 @@
 
     protected async Task MoveToLogin(bool resetToken = false)
     {       
-        if (resetToken)
-        {
-            await sessionStorage.SetItemAsync<string>("accesstoken", "");
-            await sessionStorage.SetItemAsync<string>("refreshtoken", "");
-        }
-        NavigationManager.NavigateTo("/", true);
+        // if (resetToken)
+        // {
+        //     await sessionStorage.SetItemAsync<string>("accesstoken", "");
+        //     await sessionStorage.SetItemAsync<string>("refreshtoken", "");
+        // }
+        // NavigationManager.NavigateTo("/", true);
     }
 
     async Task<(bool, bool)> CheckSession()

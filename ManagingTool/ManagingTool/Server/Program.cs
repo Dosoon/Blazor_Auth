@@ -14,19 +14,6 @@ builder.Services.AddRazorPages();
 builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri("http://localhost:11500/") });
 builder.Services.AddHttpClient();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateIssuerSigningKey = true,
-                ValidateLifetime = true,    // 토큰 유효성 검증 여부
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["SigningKey"]!)) // 비밀 서명 키
-            };
-        });
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -47,7 +34,6 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
-app.UseAuthorization();
 
 app.MapRazorPages();
 app.MapControllers();

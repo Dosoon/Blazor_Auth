@@ -7,10 +7,13 @@ using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text.Json.Serialization;
+using System.Text;
+using System.Text.Json;
 
 [ApiController]
 [Route("api/[controller]")]
-public class Auth : ControllerBase
+public class Auth : BaseController
 {
     readonly ILogger<ItemData> _logger;
     readonly HttpClient _httpClient;
@@ -24,13 +27,15 @@ public class Auth : ControllerBase
     [HttpGet]
     public async Task<ErrorCode> CheckToken()
     {
-        AttachTokensToRequestHeader();
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "CheckToken");
+        AttachTokensToRequestHeader(ref requestMessage);
 
-        var response = await _httpClient.GetAsync("CheckToken");
+        var response = await _httpClient.SendAsync(requestMessage);
         AttachNewTokenToResponseIfPresent(ref response);
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
+            Console.WriteLine("Unauthorized");
             return ErrorCode.Unauthorized;
         }
 
@@ -40,6 +45,9 @@ public class Auth : ControllerBase
     [HttpPost("Login")]
     public async Task<ManagingLoginResponse> Login(ManagingLoginRequest request)
     {
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "ManagingLogin");
+        SerializeReqBody(ref requestMessage, request);
+
         var response = await _httpClient.PostAsJsonAsync("ManagingLogin", request);
         var responseDTO = await response.Content.ReadFromJsonAsync<ManagingLoginResponse>();
 
@@ -49,25 +57,5 @@ public class Auth : ControllerBase
         }
 
         return responseDTO;
-    }
-    void AttachTokensToRequestHeader()
-    {
-        var accessToken = HttpContext.Request.Headers["Authorization"];
-        var refreshToken = HttpContext.Request.Headers["refresh_token"].FirstOrDefault();
-        _httpClient.DefaultRequestHeaders.Authorization = AuthenticationHeaderValue.Parse(accessToken);
-        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
-        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
-    }
-    void AttachNewTokenToResponseIfPresent(ref HttpResponseMessage res)
-    {
-        if (res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessTokenEnum))
-        {
-            var newAccessToken = newAccessTokenEnum.FirstOrDefault();
-            if (newAccessToken != null || newAccessToken != string.Empty)
-            {
-                _httpClient.DefaultRequestHeaders.Remove("X-NEW-ACCESS-TOKEN");
-                _httpClient.DefaultRequestHeaders.Add("X-NEW-ACCESS-TOKEN", newAccessToken);
-            }
-        }
     }
 }

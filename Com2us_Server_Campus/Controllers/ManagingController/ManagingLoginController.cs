@@ -21,7 +21,7 @@ public class ManagingLogin : ControllerBase
         _logger = logger;
         _managingDb = managingDb;
     }
-    
+
     [Authorize]
     [HttpGet("/CheckToken")]
     public ErrorCode CheckToken()

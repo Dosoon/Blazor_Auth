@@ -53,10 +53,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             options.Events = new JwtBearerEvents
             {
-                OnTokenValidated = context => {
-                    return Task.CompletedTask;
-                },
-
                 OnAuthenticationFailed = async context =>
                 {
                     var handler = context.HttpContext.RequestServices.GetRequiredService<TokenManager>();

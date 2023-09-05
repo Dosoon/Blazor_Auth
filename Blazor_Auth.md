@@ -5,11 +5,16 @@
 1. [프로젝트 개요](#프로젝트-개요)
 2. [경로 별 Layout 설정](#경로-별-layout-설정)
 3. [토큰 인증 방식](#토큰-인증-방식)
-4. [JwtBearer 설치](#jwtbearer-설치)
-5. [JwtBearer 인증 옵션 설정하기](#JwtBearer-인증-옵션-설정하기)
-6. [엔드포인트에 인증 적용하기](#엔드포인트에-인증-적용하기)
-7. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
-8. [페이지 진입 시 세션 체크 일괄 적용하기](#페이지-진입-시-세션-체크-일괄-적용하기)
+4. Server
+   1. [JwtBearer 설치](#jwtbearer-설치)
+   2. [JwtBearer 인증 옵션 설정하기](#JwtBearer-인증-옵션-설정하기)
+   3. [엔드포인트에 인증 적용하기](#엔드포인트에-인증-적용하기)
+   4. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
+5. Client
+   1. [페이지 이동 시 세션 체크](#모든-페이지에-세션-체크-일괄-적용하기)
+   2. [TokenManager](#TokenManager)
+   3. [요청 헤더에 토큰 추가하기](#요청-헤더에-토큰-추가하기)
+   4. [Access Token 갱신하기](#Access-Token-갱신하기)
 
 ---
 
@@ -174,20 +179,20 @@ App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` �
 ```mermaid
 sequenceDiagram
 
-Blazor Client-)Blazor Server: 로그인 요청
-Blazor Server-)API Server: 로그인 요청
-API Server-)DB: 유저 정보 요청
-DB--)API Server: 유저 정보 로드
+Blazor Client-)Managing Server: 로그인 요청
+Managing Server-)Game API Server: 로그인 요청
+Game API Server-)DB: 유저 정보 요청
+DB--)Game API Server: 유저 정보 로드
 
 alt 로그인 성공
-Note over API Server : 토큰 발급
-Note over API Server : Response 헤더에 토큰 추가
-API Server-)DB: Refresh Token 저장
+Note over Game API Server : 토큰 발급
+Note over Game API Server : Response 헤더에 토큰 추가
+Game API Server-)DB: Refresh Token 저장
 end
 
-API Server--)Blazor Server: 로그인 응답
+Game API Server--)Managing Server: 로그인 응답
 
-Blazor Server--)Blazor Client: 로그인 응답
+Managing Server--)Blazor Client: 로그인 응답
 ```
 
 최초 로그인 성공 시 Access Token, Refresh Token을 발급해 응답 헤더에 추가해 전송한다.
@@ -196,21 +201,22 @@ Blazor Server--)Blazor Client: 로그인 응답
 
 ```mermaid
 sequenceDiagram
-Blazor Client-)Blazor Server: API 호출
-Blazor Server-)API Server: API 호출
+Blazor Client-)Managing Server: API 호출
+Managing Server-)Game API Server: API 호출
 alt AccessToken 만료, RefreshToken 유효
-API Server--)Blazor Server: AccessToken 재발급,<br>API 응답 전송
-Blazor Server--)Blazor Client: API 응답 전송
+Game API Server--)Managing Server: AccessToken 재발급,<br>API 응답 전송
+Managing Server--)Blazor Client: API 응답 전송
 Note over Blazor Client : 새 AccessToken을<br>Session Storage에 저장
 end
 alt AccessToken 만료, RefreshToken 만료
-API Server--)Blazor Server: 401 Unauthorized
-Blazor Server--)Blazor Client: 401 Unauthorized
+Game API Server--)Managing Server: 401 Unauthorized
+Managing Server--)Blazor Client: 401 Unauthorized
 Note over Blazor Client : Session Storage 토큰 무효화<br>재로그인 유도
 end
 ```
 
-Managing API 호출 시 토큰을 사용한다. (클라이언트는 항상 헤더에 두 토큰을 모두 추가해서 전송한다.)
+Managing API 호출 시 토큰을 사용한다.<br>
+**(클라이언트는 항상 헤더에 두 토큰을 모두 추가해서 전송한다.)**
 
 Access Token이 만료되어도 Refresh Token이 유효하다면 새 Access Token을 발급해준다.<br>
 Refresh Token도 만료되었다면 다시 로그인을 시도해야 한다.
@@ -399,7 +405,7 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 
 ---
 
-## 페이지 진입 시 세션 체크 일괄 적용하기
+## 모든 페이지에 세션 체크 일괄 적용하기
 
 이 프로젝트에서는 **페이지 렌더링 전에 토큰을 검사하는 최상위 페이지** `AuthPage`를 정의했다.<br>
 그리고 인증이 필요한 모든 페이지에 `AuthPage`를 상속시켜 모든 페이지에서 세션 체크를 진행하도록 하고 있다.
@@ -480,3 +486,124 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 먼저 `base`의 `OnInitializedAsync`를 호출한 후 진행해야 한다.
 
 토큰 검사 외에도 일괄 적용되어야 하는 로직이 있다면 활용할 수 있다.
+
+<br>
+
+---
+
+## TokenManager
+
+본 프로젝트에서는 Session Storage에 토큰을 Set하거나 Get해주는<br>
+서비스 클래스 `TokenManager`를 구현해 사용하고 있다.
+
+아래는 본 프로젝트에서 구현한 예시 코드이다.
+
+```csharp
+using System.Net.Http.Headers;
+using System.Net.Http;
+using Microsoft.JSInterop;
+
+namespace ManagingTool.Client
+{
+    public class TokenManager
+    {
+        readonly IJSRuntime _jsRuntime;
+
+        public TokenManager(IJSRuntime jsRuntime)
+        {
+            _jsRuntime = jsRuntime;
+        }
+
+        // 세션 스토리지에서 토큰들을 가져옴
+        public async Task<(string, string)> GetTokensFromSessionStorage()
+        {
+            var accessToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
+            var refreshToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "refreshtoken");
+
+            return (accessToken, refreshToken);
+        }
+
+        // Response 헤더에 재발급 토큰이 있는지 확인하고, 세션 스토리지의 액세스 토큰을 갱신
+        public async Task UpdateAccessTokenIfPresent(HttpResponseMessage res)
+        {
+            if (res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessTokenEnum))
+            {
+                var newAccessToken = newAccessTokenEnum.FirstOrDefault();
+                if (newAccessToken != null || newAccessToken != string.Empty)
+                {
+                    await SetNewAccessTokenToSessionStorage(newAccessToken!);
+                }
+            }
+        }
+
+        // 세션 스토리지의 액세스 토큰을 갱신
+        public async Task SetNewAccessTokenToSessionStorage(string token)
+        {
+            await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "accesstoken", token);
+        }
+    }
+}
+```
+
+---
+
+## 요청 헤더에 토큰 추가하기
+
+Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Refresh Token<br>
+두 가지 모두를 헤더에 추가해야 한다.
+
+본 프로젝트에서는 `Authorization` 헤더에 Access Token을,<br>
+`refresh_token` 커스텀 헤더에 Refresh Token을 추가했다.
+
+아래는 본 프로젝트에서 구현한 예시 코드이다.
+
+```csharp
+// Controller Class
+
+void AttachTokensToRequestHeader(string accessToken, string refreshToken)
+{
+    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+    _httpClient.DefaultRequestHeaders.Remove("refresh_token");
+    _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
+}
+
+// Controller Action에서의 사용 예시
+public async Task<GetUserBasicInfoListResponse> GetUserBasicInfo(Int64 userId)
+{
+    // request 정의...
+
+    var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+    AttachTokensToRequestHeader(accessToken, refreshToken);
+
+    // 요청 전송 및 response 처리...
+}
+```
+
+<br>
+
+---
+
+## Access Token 갱신하기
+
+Access Token이 만료되었지만 Refresh Token이 유효하여 Access Token을 재발급받은 경우,<br>
+본 프로젝트의 서버는 `X-NEW-ACCESS-TOKEN` 헤더에 재발급한 토큰을 추가해 전송한다.
+
+모든 Request에 대해 토큰 재발급이 발생할 수 있으므로,<br>
+모든 Response에 대해 Header를 체크하는 로직이 필요하다.
+
+아래는 본 프로젝트에서 구현한 예시 코드이다. (상기한 TokenManager 클래스에 구현되어 있다.)
+
+```csharp
+// TokenManager.cs
+public async Task UpdateAccessTokenIfPresent(HttpResponseMessage res)
+{
+    if (res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessTokenEnum))
+    {
+        var newAccessToken = newAccessTokenEnum.FirstOrDefault();
+        if (newAccessToken != null || newAccessToken != string.Empty)
+        {
+            await SetNewAccessTokenToSessionStorage(newAccessToken!);
+        }
+    }
+}
+```
