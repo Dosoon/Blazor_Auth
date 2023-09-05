@@ -5,7 +5,7 @@ using Microsoft.JSInterop;
 
 namespace ManagingTool.Client;
 
-public class ItemService
+public class ItemService : BaseService
 {
     public static HttpClient _httpClient { get; set; }
     private readonly TokenManager _tokenManager;
@@ -18,11 +18,14 @@ public class ItemService
     public async Task<GetItemTableResponse> GetItemTable()
     {
         var request = new GetItemTableRequest();
-        
-        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/ItemData/GetItemTable");
+        SerializeReqBody(ref requestMessage, request);
 
-        var response = await _httpClient.PostAsJsonAsync("api/ItemData/GetItemTable", request);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+
+
+        var response = await _httpClient.SendAsync(requestMessage);
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             return new GetItemTableResponse { errorCode = ErrorCode.Unauthorized };
@@ -39,11 +42,13 @@ public class ItemService
             SearchType = searchType,
             SearchValue = searchValue
         };
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/ItemData/GetUserItemList");
+        SerializeReqBody(ref requestMessage, request);
 
         var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
 
-        var response = await _httpClient.PostAsJsonAsync("api/ItemData/GetUserItemList", request);
+        var response = await _httpClient.SendAsync(requestMessage);
         var responseDTO = await response.Content.ReadFromJsonAsync<GetUserItemListResponse>();
 
         if (responseDTO.errorCode != ErrorCode.None)
@@ -70,10 +75,13 @@ public class ItemService
             MailForm = mailForm
         };
 
-        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/ItemData/RetrieveUserItem");
+        SerializeReqBody(ref requestMessage, request);
 
-        var response = await _httpClient.PostAsJsonAsync("api/ItemData/RetrieveUserItem", request);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+
+        var response = await _httpClient.SendAsync(requestMessage);
         var responseDTO = await response.Content.ReadFromJsonAsync<RetrieveUserItemResponse>();
 
         if (responseDTO.errorCode != ErrorCode.None)
@@ -82,13 +90,6 @@ public class ItemService
         }
 
         return responseDTO;
-    }
-
-    void AttachTokensToRequestHeader(string accessToken, string refreshToken)
-    {
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
-        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
     }
 }
 

@@ -6,7 +6,7 @@ using System.Net.Http.Headers;
 
 namespace ManagingTool.Client;
 
-public class UserService
+public class UserService : BaseService
 {
     public static HttpClient _httpClient { get; set; }
     readonly TokenManager _tokenManager;
@@ -23,10 +23,13 @@ public class UserService
             UserID = userId
         };
 
-        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/UserData/GetUserBasicInfo");
+        SerializeReqBody(ref requestMessage, request);
 
-        var response = await _httpClient.PostAsJsonAsync("api/UserData/GetUserBasicInfo", request);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+
+        var response = await _httpClient.SendAsync(requestMessage);
         await _tokenManager.UpdateAccessTokenIfPresent(response);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -53,10 +56,13 @@ public class UserService
             MaxValue = maxValue
         };
 
-        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/UserData/GetMultipleUserBasicInfo");
+        SerializeReqBody(ref requestMessage, request);
 
-        var response = await _httpClient.PostAsJsonAsync("api/UserData/GetMultipleUserBasicInfo", request);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+
+        var response = await _httpClient.SendAsync(requestMessage);
         await _tokenManager.UpdateAccessTokenIfPresent(response);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -81,10 +87,13 @@ public class UserService
             UserInfo = userInfo
         };
 
-        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/UserData/UpdateUserBasicInfo");
+        SerializeReqBody(ref requestMessage, request);
 
-        var response = await _httpClient.PostAsJsonAsync("api/UserData/UpdateUserBasicInfo", request);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+
+        var response = await _httpClient.SendAsync(requestMessage);
         await _tokenManager.UpdateAccessTokenIfPresent(response);
 
         var responseDTO = await response.Content.ReadFromJsonAsync<UpdateUserBasicInformationResponse>();
@@ -95,13 +104,6 @@ public class UserService
         }
 
         return responseDTO;
-    }
-
-    void AttachTokensToRequestHeader(string accessToken, string refreshToken)
-    {
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
-        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
     }
 }
 

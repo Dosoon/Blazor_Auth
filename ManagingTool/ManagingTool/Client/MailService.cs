@@ -5,7 +5,7 @@ using Microsoft.JSInterop;
 
 namespace ManagingTool.Client;
 
-public class MailService
+public class MailService : BaseService
 {
     public static HttpClient _httpClient { get; set; }
     private readonly TokenManager _tokenManager;
@@ -23,10 +23,13 @@ public class MailService
             UserID = userId
         };
 
-        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/MailData/SendMail");
+        SerializeReqBody(ref requestMessage, request);
 
-        var response = await _httpClient.PostAsJsonAsync("api/MailData/SendMail", request);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+
+        var response = await _httpClient.SendAsync(requestMessage);
         await _tokenManager.UpdateAccessTokenIfPresent(response);
 
         var responseDTO = await response.Content.ReadFromJsonAsync<SendMailResponse>();
@@ -41,22 +44,18 @@ public class MailService
             UserID = userId
         };
 
-        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-        AttachTokensToRequestHeader(accessToken, refreshToken);
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/MailData/GetUserMailList");
+        SerializeReqBody(ref requestMessage, request);
 
-        var response = await _httpClient.PostAsJsonAsync("api/MailData/GetUserMailList", request);
+        var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+        AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+
+        var response = await _httpClient.SendAsync(requestMessage);
         await _tokenManager.UpdateAccessTokenIfPresent(response);
 
         var responseDTO = await response.Content.ReadFromJsonAsync<GetUserMailListResponse>();
 
         return responseDTO;
-    }
-
-    void AttachTokensToRequestHeader(string accessToken, string refreshToken)
-    {
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        _httpClient.DefaultRequestHeaders.Remove("refresh_token");
-        _httpClient.DefaultRequestHeaders.Add("refresh_token", refreshToken);
     }
 }
 
