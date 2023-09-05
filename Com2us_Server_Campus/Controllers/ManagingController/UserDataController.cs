@@ -34,14 +34,16 @@ public class UserData : ControllerBase
 		return response;
 	}
 
+	[Authorize]
 	[HttpPost("GetMultipleUserBasicInfo")]
-	public async Task<GetUserBasicInfoListResponse> Post(GetMultipleUserBasicInfoRequest request)
+    public async Task<GetUserBasicInfoListResponse> Post(GetMultipleUserBasicInfoRequest request)
 	{
 		var response = await _gameDb.GetMultipleUserBasicInfoAsync(request.Category, request.MinValue, request.MaxValue);
 
 		return response;
 	}
 
+	[Authorize]
     [HttpPost("UpdateUserBasicInfo")]
     public async Task<UpdateUserBasicInformationResponse> Post(UpdateUserBasicInformationRequest request)
     {

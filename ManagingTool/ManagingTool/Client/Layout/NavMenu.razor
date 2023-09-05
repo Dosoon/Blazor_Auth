@@ -38,6 +38,7 @@
     async Task Logout()
     {
         await sessionStorage.RemoveItemAsync("accesstoken");
+        await sessionStorage.RemoveItemAsync("refreshtoken");
         NavigationManager.NavigateTo("/");
     }
 }

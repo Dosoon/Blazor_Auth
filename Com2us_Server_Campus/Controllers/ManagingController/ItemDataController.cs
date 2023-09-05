@@ -9,6 +9,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using ZLogger;
 using WebAPIServer.DataClass;
+using Microsoft.AspNetCore.Authorization;
 
 
 [ApiController]
@@ -27,8 +28,9 @@ public class ItemData : ControllerBase
 		_masterDb = masterDb;
     }
 
+	[Authorize]
     [HttpPost("GetItemTable")]
-	public async Task<GetItemTableResponse> Post(GetItemTableRequest request)
+    public async Task<GetItemTableResponse> Post(GetItemTableRequest request)
 	{
 		var response = await _masterDb.GetItemTableAsync();
 
@@ -40,6 +42,7 @@ public class ItemData : ControllerBase
 		return response.Item2;
 	}
 
+	[Authorize]
     [HttpPost("GetUserItemList")]
     public async Task<GetUserItemListResponse> Post(GetUserItemListRequest request)
     {
@@ -53,6 +56,7 @@ public class ItemData : ControllerBase
         return response;
     }
 
+	[Authorize]
     [HttpPost("RetrieveUserItem")]
     public async Task<RetrieveUserItemResponse> Post(RetrieveUserItemRequest request)
     {

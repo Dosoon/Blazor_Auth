@@ -11,6 +11,7 @@ using ZLogger;
 using WebAPIServer.DataClass;
 using System.Net.Http;
 using Org.BouncyCastle.Asn1.Ocsp;
+using Microsoft.AspNetCore.Authorization;
 
 
 [ApiController]
@@ -29,8 +30,9 @@ public class MailData : ControllerBase
 		_masterDb = masterDb;
     }
 
+	[Authorize]
     [HttpPost("SendMail")]
-	public async Task<SendMailResponse> Post(SendMailRequest request)
+    public async Task<SendMailResponse> Post(SendMailRequest request)
 	{
 		var response = await _gameDb.SendManagingMailAsync(request.MailForm, request.UserID);
 
@@ -42,6 +44,7 @@ public class MailData : ControllerBase
 		return response;
 	}
 
+	[Authorize]
     [HttpPost("GetUserMailList")]
     public async Task<GetUserMailListResponse> Post(GetUserMailListRequest request)
     {
