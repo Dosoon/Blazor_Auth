@@ -10,12 +10,12 @@
    2. [토큰 발급](#토큰-발급)
    3. [토큰에서 Claim 추출](#토큰에서-claim-추출)
    4. [JwtBearer 인증 옵션 설정](#jwtbearer-인증-옵션-설정)
-   5. [엔드포인트에 인증 적용](#엔드포인트에-인증-적용)
-   6. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
+   5. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
+   6. [엔드포인트에 인증 적용](#엔드포인트에-인증-적용)
 5. Client `(Frontend)`
-   1. [페이지 상속으로 코드 일괄 적용하기](#페이지-상속으로-코드-일괄-적용하기)
+   1. [페이지 상속](#페이지-상속)
    2. [세션 스토리지로 토큰 관리하기](#세션-스토리지로-토큰-관리하기)
-   3. [요청 헤더에 토큰 추가하기](#요청-헤더에-토큰-추가하기)
+   3. [요청 헤더에 토큰 추가](#요청-헤더에-토큰-추가)
    4. [Access Token 갱신하기](#access-token-갱신하기)
 
 ---
@@ -234,6 +234,8 @@ Refresh Token도 만료되었다면 다시 로그인을 시도해야 한다.
 
 ---
 
+# Server (Backend)
+
 ## JwtBearer 설치
 
 ### 설치
@@ -337,7 +339,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         });
 ```
 
-`Program.cs` 에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 토큰 검증에 필요한 옵션들을 작성한다.
+Program.cs에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 토큰 검증에 필요한 옵션들을 작성한다.
 
 옵션은 아래와 같은 것들이 있으며, 더 많은 옵션은 참고 문서에서 확인할 수 있다.
 
@@ -355,31 +357,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 ---
 
-## 엔드포인트에 인증 적용
-
-```csharp
-// Program.cs
-app.UseAuthentication();
-app.UseAuthorization();
-```
-
-Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
-**엔드포인트에 `[Authorize]` 어트리뷰트를 추가**하면, 앞서 설정한 토큰 인증이 수행된다.
-
-다음은 컨트롤러 액션에 `[Authorize]` 어트리뷰트를 적용한 예시이다.
-
-![](images/Blazor_Auth/014.png)
-
-<br>
-
----
-
 ## 커스텀 인증 핸들러
 
 ### JwtBearerEvents
 
-Program.cs에서 JwtBearer를 추가할 때, `options.Events`에 새로운 `JwtBearerEvents`을 설정할 수 있다.<br>
-이를 활용해 람다식 형태로 커스텀 핸들러를 지정할 수 있다.
+Program.cs에서 JwtBearer를 추가할 때, `options.Events`를 정의할 수 있다.<br>
+인증 성공, 인증 실패 등의 상황에 따라 람다식 형태로 커스텀 핸들러를 지정해 사용한다.
 
 ```csharp
 // Program.cs
@@ -403,12 +386,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 [참고 문서 : MSDN JwtBearerEvents](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbearerevents?view=aspnetcore-7.0)
 
-이 프로젝트에서는 `OnAuthenticationFailed`에 대한 커스텀 핸들러를 사용하고 있다.<br>
-예시 코드는 아래와 같다.
-
 ### 예시 코드
 
-실패 시에 Access Token을 재발급하는 코드이다.
+이 프로젝트에서는 `OnAuthenticationFailed`에 대한 커스텀 핸들러를 사용하고 있다.<br>
+예시 코드는 아래와 같으며, 실패 시에 Access Token을 재발급하는 코드이다.
 
 ```csharp
 // TokenManager.cs
@@ -479,7 +460,28 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 
 ---
 
-## 페이지 상속으로 코드 일괄 적용하기
+## 엔드포인트에 인증 적용
+
+```csharp
+// Program.cs
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
+**엔드포인트에 `[Authorize]` 어트리뷰트를 추가**하면, 앞서 설정한 토큰 인증이 수행된다.
+
+다음은 컨트롤러 액션에 `[Authorize]` 어트리뷰트를 적용한 예시이다.
+
+![](images/Blazor_Auth/014.png)
+
+<br>
+
+---
+
+# Client (Frontend)
+
+## 페이지 상속
 
 **페이지 상속**을 통해 모든 Pages에 일괄 적용할 코드를 작성할 수 있다.
 
@@ -573,7 +575,7 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 
 ---
 
-## 세션 스토리지로 토큰 관리하기
+## 세션 스토리지로 토큰 관리
 
 `JSRuntime` 서비스를 통해 Session Storage에 토큰을 저장, 수정, 삭제할 수 있다.<br>
 Session Storage에는 key-value 형태로 값을 저장할 수 있으며, 사용 방식은 아래와 같다.
@@ -640,7 +642,7 @@ namespace ManagingTool.Client
 
 ---
 
-## 요청 헤더에 토큰 추가하기
+## 요청 헤더에 토큰 추가
 
 Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Refresh Token<br>
 두 가지 모두를 헤더에 추가해야 한다.
