@@ -2,7 +2,7 @@
 @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
 <Header Class="header" Style="width:100%">
-    <div style="display:inline-block;">
+    <div style="display:inline-block; margin-right:1.5vw;">
         <h4 style="color:white"><Icon Type="setting" Theme="outline" /> ManagingTool</h4>
     </div>
     <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" Style="display:inline-block">
@@ -14,19 +14,7 @@
             <Icon Type="user" Theme="outline" />
             Lookup Multiple Users
         </MenuItem>
-        <MenuItem Key="3" RouterLink="/SendMail">
-            <Icon Type="mail" Theme="outline" />
-            Send Mail
-        </MenuItem>
-        <MenuItem Key="4" RouterLink="/RetrieveItem">
-            <Icon Type="import" Theme="outline" />
-            Retrieve Item
-        </MenuItem>
-        <MenuItem Key="5" RouterLink="/SetCampaign">
-            <Icon Type="calendar" Theme="outline" />
-            Set Campaign
-        </MenuItem>
-        <MenuItem Key="6" @onclick="Logout">
+        <MenuItem Key="3" @onclick="Logout">
             <Icon Type="logout" Theme="outline" />
             Logout
         </MenuItem>

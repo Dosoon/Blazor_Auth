@@ -2,6 +2,7 @@
 {
     None = 0,
     Unauthorized = 1,
+    EmptyResponse = 2,
 
     // Managing Error
     GetUserDataByUserIdFailException = 11001,
@@ -19,4 +20,11 @@
     ManagingUpdateRefreshTokenException = 11012,
     InvalidJWTToken = 11013,
     LoginFailed = 11014,
+
+    // Service
+    GetUserBasicInfoFail = 12000,
+    GetUserItemListFail = 12001,
+    GetUserMailListFail = 12002,
+    LoginRequestFail = 12003,
+
 }

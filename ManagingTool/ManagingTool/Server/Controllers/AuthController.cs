@@ -1,6 +1,4 @@
-﻿namespace WebAPIServer.Controllers.ManagingController;
-
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Json;
 using ManagingTool.Shared.DTO;
 using System.Net.Http;
@@ -10,51 +8,39 @@ using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
 using System.Text;
 using System.Text.Json;
+using ManagingTool.Server;
 
 [ApiController]
 [Route("api/[controller]")]
-public class Auth : BaseController
+public class Auth
 {
-    readonly ILogger<ItemData> _logger;
-    readonly HttpClient _httpClient;
-
-    public Auth(ILogger<ItemData> logger, HttpClient httpClient)
-    {
-        _logger = logger;
-        _httpClient = httpClient;
-    }
-
+    [Authorize]
     [HttpGet]
-    public async Task<ErrorCode> CheckToken()
+    public ErrorCode CheckToken()
     {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Get, "CheckToken");
-        AttachTokensToRequestHeader(ref requestMessage);
-
-        var response = await _httpClient.SendAsync(requestMessage);
-        AttachNewTokenToResponseIfPresent(ref response);
-
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            return ErrorCode.Unauthorized;
-        }
-
         return ErrorCode.None;
     }
 
     [HttpPost("Login")]
-    public async Task<ManagingLoginResponse> Login(ManagingLoginRequest request)
+    public ManagingLoginResponse Login(ManagingLoginRequest request)
     {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "ManagingLogin");
-        SerializeReqBody(ref requestMessage, request);
+        var response = new ManagingLoginResponse() { Result = ErrorCode.LoginFailed };
 
-        var response = await _httpClient.PostAsJsonAsync("ManagingLogin", request);
-        var responseDTO = await response.Content.ReadFromJsonAsync<ManagingLoginResponse>();
-
-        if (responseDTO == null)
+        if (!(request.Email.Equals("genie@com2us.com") && request.Password.Equals("1234")))
         {
-            // errorlog
+            return response;
         }
 
-        return responseDTO;
+        // 로그인 성공 시 토큰 생성
+        var (accessToken, refreshToken) = TokenManager.CreateTokens(1);
+
+        // 응답 데이터 세팅
+        response.Result = ErrorCode.None;
+        response.Name = "지니";
+        response.AccountId = 1;
+        response.accessToken = accessToken;
+        response.refreshToken = refreshToken;
+        
+        return response;
     }
 }

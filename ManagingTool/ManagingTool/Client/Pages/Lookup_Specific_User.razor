@@ -4,8 +4,6 @@
 @using AntDesign.TableModels
 @using AntDesign.Core.Extensions
 @inject UserService UserDataService
-@inject ItemService ItemService
-@inject MailService MailService
 @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 @inherits AuthPage
 
@@ -198,7 +196,7 @@
     {
         userItemDataSet.Clear();
 
-        var response = await ItemService.GetUserItemList("UserID", userId);
+        var response = await UserDataService.GetUserItemList("UserID", userId);
         if (response.errorCode != ErrorCode.None)
         {
             if (response.errorCode == ErrorCode.Unauthorized)
@@ -219,7 +217,7 @@
     {
         userMailDataSet.Clear();
 
-        var response = await MailService.GetUserMailList(userId);
+        var response = await UserDataService.GetUserMailList(userId);
         if (response.errorCode != ErrorCode.None)
         {
             if (response.errorCode == ErrorCode.Unauthorized)
@@ -260,7 +258,7 @@
         userDataSet[index].BestClearStage = editCache[id].data.BestClearStage;
         editCache[id] = (false, editCache[id].data);
 
-        await UserDataService.UpdateUserBasicInfo(userDataSet[index]);
+        // await UserDataService.UpdateUserBasicInfo(userDataSet[index]);
         await sessionStorage.SetItemAsync<List<UserInfo>>("userinfo", userDataSet);
     }
 

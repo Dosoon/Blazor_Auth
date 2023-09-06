@@ -1,6 +1,4 @@
-﻿namespace WebAPIServer.Controllers.ManagingController;
-
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Json;
 using ManagingTool.Shared.DTO;
 using System.Net.Http;
@@ -11,92 +9,179 @@ using ManagingTool.Client;
 using System.Text.Json;
 using System.Text;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class UserData : BaseController
+public class UserData
 {
-    readonly ILogger<UserData> _logger;
-    readonly HttpClient _httpClient;
+    static bool _dummyDataCreated = false;
+    static List<UserInfo> _dummyUserdataList = new List<UserInfo>();
+    static List<UserItem> _dummyItemdataList = new List<UserItem>();
+    static List<MailData> _dummyMailDataList = new List<MailData>();
 
-    public UserData(ILogger<UserData> logger, HttpClient httpClient)
+    public UserData()
     {
-		_logger = logger;
-        _httpClient = httpClient;
+        if (_dummyDataCreated == false)
+        {
+            CreateDummyData();
+            _dummyDataCreated = true;
+        }
     }
 
     [HttpPost("GetUserBasicInfo")]
-	public async Task<GetUserBasicInfoListResponse> Post(GetUserBasicInfoRequest request)
+	public GetUserBasicInfoListResponse GetUserBasicInfo(GetUserBasicInfoRequest request)
     {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "Managing/UserData/GetUserBasicInfo");
-        SerializeReqBody(ref requestMessage, request);
-        AttachTokensToRequestHeader(ref requestMessage);
-
-        var response = await _httpClient.SendAsync(requestMessage);
-        AttachNewTokenToResponseIfPresent(ref response);
-
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        // UserID는 0부터 19까지만 가능
+        if (request.UserID < 0 || request.UserID >= _dummyUserdataList.Count)
         {
-            return new GetUserBasicInfoListResponse { errorCode = ErrorCode.Unauthorized };
+            return new GetUserBasicInfoListResponse()
+            {
+                errorCode = ErrorCode.GetUserDataByUserIdFailException
+            };
         }
 
-        var responseDTO = await response.Content.ReadFromJsonAsync<GetUserBasicInfoListResponse>();
-
-        if (responseDTO == null)
+        var response = new GetUserBasicInfoListResponse()
         {
-            // errorlog
+            errorCode = ErrorCode.None,
+            UserInfo = new List<UserInfo>() { _dummyUserdataList[(Int32)request.UserID] }
+        };
+
+        return response;
+    }
+
+    [HttpPost("GetUserItemList")]
+    public GetUserItemListResponse GetUserItemList(GetUserItemListRequest request)
+    {
+        // 더미 아이템에 유저 ID 지정
+        var itemList = new List<UserItem>();
+        foreach (var item in _dummyItemdataList)
+        {
+            item.UserId = request.SearchValue;
+            itemList.Add(item);
         }
 
-        return responseDTO;
+        var response = new GetUserItemListResponse()
+        {
+            errorCode = ErrorCode.None,
+            UserItem = itemList
+        };
+
+        return response;
+    }
+
+    [HttpPost("GetUserMailList")]
+    public GetUserMailListResponse GetUserMailList(GetUserMailListRequest request)
+    {
+        // 더미 메일에 유저 ID 지정
+        var mailList = new List<MailData>();
+        foreach (var mail in _dummyMailDataList)
+        {
+            mail.UserId = request.UserID;
+            mailList.Add(mail);
+        }
+
+        var response = new GetUserMailListResponse()
+        {
+            errorCode = ErrorCode.None,
+            UserMail = mailList
+        };
+
+        return response;
     }
 
 	[HttpPost("GetMultipleUserBasicInfo")]
-	public async Task<GetUserBasicInfoListResponse> Post(GetMultipleUserBasicInfoRequest request)
+	public GetUserBasicInfoListResponse GetMultipleUserBasicInfo(GetMultipleUserBasicInfoRequest request)
     {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "Managing/UserData/GetMultipleUserBasicInfo");
-        SerializeReqBody(ref requestMessage, request);
-        AttachTokensToRequestHeader(ref requestMessage);
-
-        var response = await _httpClient.SendAsync(requestMessage);
-        AttachNewTokenToResponseIfPresent(ref response);
-
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        var response = new GetUserBasicInfoListResponse()
         {
-            return new GetUserBasicInfoListResponse { errorCode = ErrorCode.Unauthorized };
+            errorCode = ErrorCode.None
+        };
+
+        // 카테고리에 따라 더미데이터 필터링
+        var filteredUserList = new List<UserInfo>();
+
+        switch (request.Category)
+        {
+            case "UserID":
+                filteredUserList = _dummyUserdataList
+                    .Where(user => user.UserID >= request.MinValue && user.UserID <= request.MaxValue)
+                    .ToList();
+                break;
+
+            case "Level":
+                filteredUserList = _dummyUserdataList
+                    .Where(user => user.Level >= request.MinValue && user.Level <= request.MaxValue)
+                    .ToList();
+                break;
+
+            case "Money":
+                filteredUserList = _dummyUserdataList
+                    .Where(user => user.Money >= request.MinValue && user.Money <= request.MaxValue)
+                    .ToList();
+                break;
+
+            case "BestClearStage":
+                filteredUserList = _dummyUserdataList
+                    .Where(user => user.BestClearStage >= request.MinValue && user.BestClearStage <= request.MaxValue)
+                    .ToList();
+                break;
+
+            default:
+                filteredUserList = _dummyUserdataList.ToList();
+                break;
         }
 
-        var responseDTO = await response.Content.ReadFromJsonAsync<GetUserBasicInfoListResponse>();
+        response.UserInfo = filteredUserList;
 
-        if (responseDTO == null)
-        {
-            // errorlog
-
-        }
-
-        return responseDTO;
+        return response;
     }
 
-    [HttpPost("UpdateUserBasicInfo")]
-    public async Task<UpdateUserBasicInformationResponse> Post(UpdateUserBasicInformationRequest request)
+    void CreateDummyData()
     {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "Managing/UserData/UpdateUserBasicInfo");
-        SerializeReqBody(ref requestMessage, request);
-        AttachTokensToRequestHeader(ref requestMessage);
-
-        var response = await _httpClient.SendAsync(requestMessage);
-        AttachNewTokenToResponseIfPresent(ref response);
-
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        for (var i = 0; i < 20; i++)
         {
-            return new UpdateUserBasicInformationResponse { errorCode = ErrorCode.Unauthorized };
+            var user = new UserInfo();
+            user.AccountID = new Random().Next(0, Int32.MaxValue);
+            user.UserID = i;
+            user.Level = new Random().Next(1, 100);
+            user.Exp = new Random().Next(0, 1000000);
+            user.Money = new Random().Next(0, 1000000);
+            user.BestClearStage = new Random().Next(0, 100);
+            user.LastLogin = DateTime.Now;
+
+            _dummyUserdataList.Add(user);
         }
 
-        var responseDTO = await response.Content.ReadFromJsonAsync<UpdateUserBasicInformationResponse>();
-
-        if (responseDTO == null)
+        for (var i = 0; i < 5; i++)
         {
-            // errorlog
+            var item = new UserItem();
+            item.ItemId = new Random().Next(0, Int32.MaxValue);
+            item.ItemCode = new Random().Next(0, 100);
+            item.ItemCount = new Random().Next(0, 10);
+            item.Attack = new Random().Next(0, 100);
+            item.Defence = new Random().Next(0, 100);
+            item.Magic = new Random().Next(0, 100);
+            item.EnhanceCount = new Random().Next(0, 10);
+            item.IsDestroyed = new Random().Next(0, 2) == 0 ? false : true;
+            item.ObtainedAt = DateTime.Now;
+
+            _dummyItemdataList.Add(item);
         }
 
-        return responseDTO;
+        for (var i = 0; i < 5; i++)
+        {
+            var mail = new MailData();
+            mail.MailId = i;
+            mail.SenderId = new Random().Next(0, 19);
+            mail.Title = (i + 1) + "번째 메일";
+            mail.Content = (i + 1) + "번째 메일입니다.";
+            mail.IsRead = new Random().Next(0, 2) == 0 ? false : true;
+            mail.HasItem = new Random().Next(0, 2) == 0 ? false : true;
+            mail.IsDeleted = new Random().Next(0, 2) == 0 ? false : true;
+            mail.ObtainedAt = DateTime.Now;
+            mail.ExpiredAt = DateTime.Now.AddDays(7);
+
+            _dummyMailDataList.Add(mail);
+        }
     }
 }
