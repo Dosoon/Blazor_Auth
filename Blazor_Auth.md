@@ -5,14 +5,14 @@
 1. [프로젝트 개요](#프로젝트-개요)
 2. [경로 별 Layout 설정](#경로-별-layout-설정)
 3. [토큰 인증 방식](#토큰-인증-방식)
-4. Server
+4. Server `(Backend)`
    1. [JwtBearer 설치](#jwtbearer-설치)
-   2. [JwtBearer 인증 옵션 설정하기](#JwtBearer-인증-옵션-설정하기)
-   3. [엔드포인트에 인증 적용하기](#엔드포인트에-인증-적용하기)
+   2. [JwtBearer 인증 옵션 설정](#jwtbearer-인증-옵션-설정)
+   3. [엔드포인트에 인증 적용](#엔드포인트에-인증-적용)
    4. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
-5. Client
+5. Client `(Frontend)`
    1. [페이지 상속으로 코드 일괄 적용하기](#페이지-상속으로-코드-일괄-적용하기)
-   2. [TokenManager](#TokenManager)
+   2. [세션 스토리지로 토큰 관리하기](#세션-스토리지로-토큰-관리하기)
    3. [요청 헤더에 토큰 추가하기](#요청-헤더에-토큰-추가하기)
    4. [Access Token 갱신하기](#Access-Token-갱신하기)
 
@@ -71,7 +71,7 @@ App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` �
 
 ![](images/Blazor_Auth/006.png)
 
-### 레이아웃 예시 코드
+### 예시 코드
 
 1. MainLayout (로그인 화면)
 
@@ -232,7 +232,7 @@ Refresh Token도 만료되었다면 다시 로그인을 시도해야 한다.
 
 ---
 
-## JwtBearer 적용
+## JwtBearer 설치
 
 ### 설치
 
@@ -246,7 +246,7 @@ Blazor Server, API Server 프로젝트에 Nuget 패키지 관리자 -> 솔루션
 
 ---
 
-## JwtBearer 인증 옵션 설정하기
+## JwtBearer 인증 옵션 설정
 
 ```csharp
 // Program.cs
@@ -283,7 +283,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 ---
 
-## 엔드포인트에 인증 적용하기
+## 엔드포인트에 인증 적용
 
 ```csharp
 // Program.cs
@@ -334,7 +334,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 이 프로젝트에서는 `OnAuthenticationFailed`에 대한 커스텀 핸들러를 사용하고 있다.<br>
 예시 코드는 아래와 같다.
 
-### 커스텀 핸들러를 사용한 Access Token 재발급 예시 코드
+### 예시 코드
+
+실패 시에 Access Token을 재발급하는 코드이다.
 
 ```csharp
 // TokenManager.cs
@@ -407,14 +409,15 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 
 ## 페이지 상속으로 코드 일괄 적용하기
 
+**페이지 상속**을 통해 모든 Pages에 일괄 적용할 코드를 작성할 수 있다.
+
 이 프로젝트에서는 **페이지 렌더링 전에 토큰을 검사하는 최상위 페이지** `AuthPage`를 정의했다.<br>
 그리고 인증이 필요한 모든 페이지에 `AuthPage`를 상속시켜 모든 페이지에서 세션 체크를 진행하도록 하고 있다.
 
-### AuthPage.razor 예시 코드
+### 예시 코드
 
 ```csharp
 // AuthPage.razor
-@inject IConfirmService ConfirmService
 @inject NavigationManager NavigationManager
 @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
@@ -498,16 +501,25 @@ public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext cont
 
 ---
 
-## TokenManager
+## 세션 스토리지로 토큰 관리하기
+
+`JSRuntime` 서비스를 통해 Session Storage에 토큰을 저장, 수정, 삭제할 수 있다.<br>
+Session Storage에는 key-value 형태로 값을 저장할 수 있으며, 사용 방식은 아래와 같다.
+
+```csharp
+await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "Key값", Value); // 데이터 저장
+await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "Key값");    // 데이터 로드
+```
+
+### 예시 코드
 
 본 프로젝트에서는 Session Storage에 토큰을 Set하거나 Get해주는<br>
 서비스 클래스 `TokenManager`를 구현해 사용하고 있다.
 
-Session Storage에 접근할 때에는 JSRuntime을 사용한다.
-
 아래는 본 프로젝트에서 구현한 예시 코드이다.
 
 ```csharp
+// TokenManager.cs
 using System.Net.Http.Headers;
 using System.Net.Http;
 using Microsoft.JSInterop;
@@ -561,6 +573,17 @@ namespace ManagingTool.Client
 Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Refresh Token<br>
 두 가지 모두를 헤더에 추가해야 한다.
 
+헤더에 토큰을 저장하는 방법은 아래와 같다.<br>
+
+```csharp
+var requestMessage = new HttpRequestMessage(HttpMethod.Post, ApiPath);  // Request 메시지
+
+requestMessage.Headers.Add("헤더명", "Value");                          // Header에 데이터 추가
+requestMessage.Headers.Remove("헤더명");                                // Header에서 데이터 삭제
+```
+
+### 예시 코드
+
 본 프로젝트에서는 `Authorization` 헤더에 Access Token을,<br>
 `refresh_token` 커스텀 헤더에 Refresh Token을 추가했다.
 
@@ -611,8 +634,13 @@ public async Task<ResponseDTO> Action(RequestDTO request)
 Access Token이 만료되었지만 Refresh Token이 유효하여 Access Token을 재발급받은 경우,<br>
 본 프로젝트의 서버는 `X-NEW-ACCESS-TOKEN` 헤더에 재발급한 토큰을 추가해 전송한다.
 
-모든 Request에 대해 토큰 재발급이 발생할 수 있으므로,<br>
-모든 Response에 대해 Header를 체크하는 로직이 필요하다.
+헤더에서 `X-NEW-ACCESS-TOKEN` 값을 가져오는 방법은 아래와 같다.
+
+```csharp
+req.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessToken); // out 파라미터 newAccessToken으로 값을 로드
+```
+
+### 예시 코드
 
 아래는 본 프로젝트에서 구현한 예시 코드이다. (상기한 TokenManager 클래스에 구현되어 있다.)
 
