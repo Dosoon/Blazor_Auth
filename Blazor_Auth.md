@@ -3,18 +3,20 @@
 ## 목차
 
 1. [프로젝트 개요](#프로젝트-개요)
-2. [경로 별 Layout 설정](#경로-별-layout-설정)
+2. [경로 별 Layout 설정](#3-경로-별-layout-설정)
 3. [토큰 인증 방식](#토큰-인증-방식)
 4. Server `(Backend)`
    1. [JwtBearer 설치](#jwtbearer-설치)
-   2. [JwtBearer 인증 옵션 설정](#jwtbearer-인증-옵션-설정)
-   3. [엔드포인트에 인증 적용](#엔드포인트에-인증-적용)
-   4. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
+   2. [토큰 발급](#토큰-발급)
+   3. [토큰에서 Claim 추출](#토큰에서-claim-추출)
+   4. [JwtBearer 인증 옵션 설정](#jwtbearer-인증-옵션-설정)
+   5. [엔드포인트에 인증 적용](#엔드포인트에-인증-적용)
+   6. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
 5. Client `(Frontend)`
    1. [페이지 상속으로 코드 일괄 적용하기](#페이지-상속으로-코드-일괄-적용하기)
    2. [세션 스토리지로 토큰 관리하기](#세션-스토리지로-토큰-관리하기)
    3. [요청 헤더에 토큰 추가하기](#요청-헤더에-토큰-추가하기)
-   4. [Access Token 갱신하기](#Access-Token-갱신하기)
+   4. [Access Token 갱신하기](#access-token-갱신하기)
 
 ---
 
@@ -116,7 +118,7 @@ App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` �
    ```
 
 메뉴 바(네비게이션 바) `NavMenu` 컴포넌트를 기본적으로 포함하고 있는 형태의 레이아웃이다.<br/>
-메뉴 바는 AntDesign 라이브러리에서 제공하는 것을 사용해 만들었으며, 예시 코드는 다음과 같다.
+메뉴 바는 AntDesign 라이브러리에서 제공하는 템플릿을 사용해 만들었으며, 예시 코드는 다음과 같다.
 
 3. NavMenu (로그인 이후 메뉴 바)
 
@@ -241,6 +243,76 @@ Refresh Token도 만료되었다면 다시 로그인을 시도해야 한다.
 | ![](images/Blazor_Auth/010.png) | ![](images/Blazor_Auth/011.png) |
 
 Blazor Server, API Server 프로젝트에 Nuget 패키지 관리자 -> 솔루션용 NuGet 패키지 관리에서 `Microsoft.AspNetCore.Authentication.JwtBearer` 를 설치한다.
+
+<br>
+
+---
+
+## 토큰 발급
+
+JWT은 헤더(Header), 페이로드(Payload), 서명(Signature)의 3가지 파트로 나눠져 있다.<br>
+![](https://velog.velcdn.com/images%2Fhahan%2Fpost%2Fb41e147b-69d0-41ad-9f23-5e1ab8ec35ce%2Fimage.png)
+
+- **헤더** : 어떤 알고리즘을 사용해 암호화 되었는지, 어떤 토큰을 사용하는지에 대한 정보
+- **페이로드** : 전달하려는 정보 (단, 노출될 수 있음)
+- **서명** : 검증을 위해 서버가 지정한 Signing Key
+
+여기서, Payload에 담는 정보를 클레임(`Claim`)이라고 한다.
+
+토큰은 `JwtSecurityTokenHandler`와 `SecurityTokenDescriptor`를 통해 발급할 수 있다.<br>
+
+- `JwtSecurityTokenHandler` : 토큰 생성 및 검증 클래스
+- `SecurityTokenDescriptor` : 토큰에 들어갈 정보를 담은 구조체
+
+### 예시 코드
+
+```csharp
+// JwtSecurityTokenHandler 생성
+var tokenHandler = new JwtSecurityTokenHandler();
+
+// Signing Key, 토큰 만료 기간 설정
+var key = Encoding.ASCII.GetBytes(_signingKey);
+var expires = DateTime.UtcNow.AddHours(6);
+
+// 토큰 구조체 생성
+var tokenDescriptor = new SecurityTokenDescriptor
+{
+    Subject = new ClaimsIdentity(new Claim[]
+    {
+        new Claim("Key", Value),
+        // ... 그 외 클레임 추가
+    }),
+    Expires = expires,
+    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+};
+
+// 토큰 생성
+var token = tokenHandler.CreateToken(tokenDescriptor);
+tokenHandler.WriteToken(token);
+```
+
+<br>
+
+---
+
+## 토큰에서 Claim 추출
+
+토큰에서 Claim을 추출할 때에도 `JwtSecurityTokenHandler`를 사용한다.
+
+```csharp
+var handler = new JwtSecurityTokenHandler();
+var readToken = handler.ReadJwtToken(token);
+
+// Claim 추출
+var claim = refreshToken.Claims.FirstOrDefault(claim => claim.Type.Equals("Key"));
+return claim.Value;
+```
+
+### 예시 코드
+
+토큰 페이로드에 `AccountId`라는 Key를 갖는 Claim을 추가했다면, 다음과 같이 사용할 수 있다.
+
+`var accountIdClaim = refreshToken.Claims.FirstOrDefault(claim => claim.Type.Equals("AccountId"));`
 
 <br>
 
