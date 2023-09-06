@@ -33,6 +33,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             };
         });
 
+// AccountId에 대한 인가 정책 정의
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AccountIdPolicy", policy => policy.RequireClaim("AccountId"));
+});
+
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -53,6 +61,7 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();

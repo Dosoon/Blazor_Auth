@@ -9,7 +9,7 @@ using ManagingTool.Client;
 using System.Text.Json;
 using System.Text;
 
-[Authorize]
+[Authorize(Policy = "AccountIdPolicy")]
 [ApiController]
 [Route("api/[controller]")]
 public class UserData

@@ -3,22 +3,23 @@
 ## 목차
 
 1. [개요](#개요)
-2. [Routing 별 레이아웃 설정](#routing-별-layout-설정)
-3. [토큰 인증 구조](#토큰-인증-구조)
-4. [Server : 토큰 발급](#server--토큰-발급)
+2. [커스텀 Layout 생성](#커스텀-layout-생성)
+3. [Routing 별 레이아웃 설정](#routing-별-layout-설정)
+4. [토큰 인증 구조](#토큰-인증-구조)
+5. [Server : 토큰 발급](#server--토큰-발급)
    1. [JwtBearer 설치](#jwtbearer-설치)
    2. [JWT 발급](#jwt-발급)
-5. [Server : 토큰 검증](#server--토큰-검증)
+6. [Server : 토큰 검증](#server--토큰-검증)
    1. [JwtBearer 옵션 설정](#jwtbearer-옵션-설정)
    2. [JWT에서 Claim 추출](#jwt에서-claim-추출)
    3. [커스텀 핸들러](#커스텀-핸들러)
-6. [Server : 인증 적용](#server--인증-적용)
+7. [Server : 인증 적용](#server--인증-적용)
    1. [Authorize Attribute](#authorize-attribute)
-7. [Client : 토큰 관리](#client--토큰-관리)
+8. [Client : 토큰 관리](#client--토큰-관리)
    1. [세션 스토리지](#세션-스토리지)
    2. [헤더에 토큰 추가](#헤더에-토큰-추가)
    3. [헤더에서 재발급 토큰 로드](#헤더에서-재발급-토큰-로드)
-8. [예시 프로젝트 상세설명](#예시-프로젝트-상세설명)
+9. [예시 프로젝트 상세설명](#예시-프로젝트-상세설명)
 
 ---
 
@@ -57,6 +58,54 @@ Session Storage에 저장된 토큰이 만료되거나 오염된 경우 토큰�
 
 ---
 
+## 커스텀 Layout 생성
+
+Blazor는 페이지의 전반적인 구성과 배치 정보를 `Layout` 클래스에 정의한다.<br>
+
+각 페이지의 구체적인 View(시각적인 구성 요소)가 들어갈 영역은 `@Body`로 지정할 수 있다.
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![](images/Blazor_Auth/024.png) | ![](images/Blazor_Auth/025.PNG) |
+
+위 화면은 본 프로젝트의 `AfterLoginLayout`이 적용된 `/Lookup_Multiple_Users` 페이지와 `/Lookup_Specific_User` 페이지이다.<br>
+
+Pages 폴더의 `Lookup_Multiple_Users.razor`와 `Lookup_Specific_User.razor`에 정의한 내용은 빨간 박스 영역에만 속하고,<br>
+그 외의 구성 요소들(ex. 상단의 메뉴 바)은 **레이아웃**에 속한 것이다.
+
+이처럼 여러 페이지에 **일관된 배치를 적용할 수 있게 해주는 클래스를 `Layout`이라고 한다.**
+
+레이아웃은 `LayoutComponentBase`를 상속받아 생성할 수 있다.<br>
+레이아웃 내에서 페이지가 차지하는 영역은 `@Body`로 지정한다.
+
+### 예시 코드
+
+```csharp
+// AfterLoginLayout.cs
+@inherits LayoutComponentBase
+
+<div>
+    <NavMenu /> // 메뉴 바 컴포넌트
+
+    <main>
+        <article class="content px-4">
+            @Body // 페이지 영역
+        </article>
+    </main>
+</div>
+```
+
+이 코드는 본 프로젝트에서 사용된 `AfterLoginLayout`이다.<br>
+
+`/Lookup_Multiple_Users` 페이지에 접속해 개발자 도구의 Elements 탭을 보면,<br>
+`Lookup_Multiple_Users.razor`에 작성한 Html 태그들이 `<article>` 요소 내부에 들어가있는 것을 확인할 수 있다.
+
+![](images/Blazor_Auth/026.PNG)
+
+<br>
+
+---
+
 ## Routing 별 Layout 설정
 
 | 메인 화면                       | 로그인 이후 화면                |
@@ -65,14 +114,17 @@ Session Storage에 저장된 토큰이 만료되거나 오염된 경우 토큰�
 
 ![](images/Blazor_Auth/005.PNG)
 
-이 프로젝트에서는 라우팅에 따라 다른 **Layout**을 사용하고 있다.<br>
+이 프로젝트에서는 페이지 경로에 따라 다른 **Layout**을 사용하고 있다.<br>
 (사용하는 레이아웃은 각각 **MainLayout**, **AfterLoginLayout** 이다.)
 
 ### App.razor 라우팅 설정
 
 Blazor에서 라우팅은 **App.razor** 파일에서 설정 가능하다.<br>
-App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` 문을 사용해 레이아웃을 세팅해준다.<br/>
-이 프로젝트는 초기 페이지(`NavigationManager.BaseUri`)를 제외하고는 모두 AfterLoginLayout을 적용시켰다.
+
+App.razor에서 `NavigationManager`를 주입받으면 현재 경로를 알 수 있다. <br>
+이 경로에 따라 `@if-else` 문을 사용해 **`DefaultLayout`에 사용하고자 하는 레이아웃 클래스 타입을 지정**해주면 된다.<br>
+
+본 프로젝트는 초기 페이지(`NavigationManager.BaseUri`)를 제외하고는 모두 AfterLoginLayout을 적용시켰다.
 
 ### 예시 코드
 
@@ -86,16 +138,30 @@ App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` �
         {
             <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         }
-        else // 그 외엔 AnotherLayout 사용
+        else // 그 외엔 AfterLoginLayout 사용
         {
-            <RouteView RouteData="@routeData" DefaultLayout="@typeof(AnotherLayout)" />
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(AfterLoginLayout)" />
         }
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
-        // 라우팅 실패...
+        // 라우팅에 실패한 경우
     </NotFound>
 </Router>
+```
+
+가령 `BoardLayout.cs`, `MailLayout.cs` 와 같은 커스텀 레이아웃들을 작성했고,<br>
+이들을 각각 `/aRoute`, `/bRoute` 경로에 적용하고 싶다면 위의 `@if-else` 부분을 다음과 같이 작성할 수 있다.
+
+```csharp
+@if (NavigationManager.Uri.StartsWith("aRoute"))
+{
+    <RouteView RouteData="@routeData" DefaultLayout="@typeof(BoardLayout)" />
+}
+else if (NavigationManager.Uri.StartsWith("bRoute"))
+{
+    <RouteView RouteData="@routeData" DefaultLayout="@typeof(MailLayout)" />
+}
 ```
 
 <br>
@@ -104,7 +170,43 @@ App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` �
 
 ## 토큰 인증 구조
 
+### JWT(Json Web Token) 기반 Access Token + Refresh Token 방식
+
+JWT 기반의 Access Token과 Refresh Token 두 가지의 토큰을 두고 인증 처리를 하는 구조이다.
+
+- **Access Token**
+
+  Access Token은 클라이언트(프론트엔드)가 요청을 보낼 때 `Authorization` 헤더에 추가해야 하는 토큰이다.<br>
+  서버(백엔드)는 `Authorization` 헤더에 있는 Access Token을 검증해 해당 요청을 수행할지 말지 결정한다.<br>
+  Refresh Token에 비해 유효기간이 짧다.
+
+- **Refresh Token**
+
+  Access Token을 재발급할 수 있게 해주는 토큰이다.<br>
+  최초 로그인 시에 Access Token과 함께 발급된다.
+
+<br>
+
+서버(백엔드)는 **최초 로그인 시 Access Token과 Refresh Token을 클라이언트(프론트엔드)에게 전달**한다.<br>
+**이후 API 호출에 대해서는 요청 헤더의 Access Token이 유효한지만 검증**하여 응답을 제공한다.
+
+- 토큰을 사용하는 이유
+
+  세션을 서버(백엔드)에 전부 저장하지 않기 때문에 부하가 적고, Scale-Out 방식의 확장에 유리하다.
+
+- Refresh Token을 사용하는 이유
+
+  서버(백엔드)는 한 번 발급한 토큰을 저장하지 않고, 단지 토큰의 유효성만으로 권한을 부여한다.<br>
+  따라서 **토큰이 탈취되면 접근을 막을 수 없다는 위험성**이 있다.<br>
+  하지만 Access Token의 유효기간을 너무 짧게 하면 이용이 불편해질 수 있기 때문에<br>
+  Access Token의 유효기간은 짧게, Refresh Token은 상대적으로 길게 하여<br>
+  Access Token이 만료되어도 Refresh Token이 유효하다면 Access Token을 재발급할 수 있게 하여 이를 보완한다.
+
+<br>
+
 ### 최초 로그인
+
+최초 로그인 시의 시퀀스 다이어그램이다.
 
 ```mermaid
 sequenceDiagram
@@ -125,9 +227,14 @@ Game API Server--)Managing Server: 로그인 응답
 Managing Server--)Blazor Client: 로그인 응답
 ```
 
-최초 로그인 성공 시 Access Token, Refresh Token을 발급해 응답 헤더에 추가해 전송한다.
+최초 로그인 성공 시에만 Access Token, Refresh Token을 발급해 응답 Body에 넣어 전송한다.<br>
+클라이언트(프론트엔드)는 이 토큰들을 세션 스토리지에 저장해 이후의 API 호출에 사용한다.
+
+<br>
 
 ### 토큰 발급 이후 API 호출
+
+토큰 발급 이후, 인증이 필요한 모든 API 호출에 대한 시퀀스 다이어그램이다.
 
 ```mermaid
 sequenceDiagram
@@ -145,13 +252,15 @@ Note over Blazor Client : Session Storage 토큰 무효화<br>재로그인 유�
 end
 ```
 
-Managing API 호출 시 토큰을 사용한다.<br>
+로그인 외의 Managing API 호출 시 토큰을 사용한다.<br>
 **(클라이언트는 항상 헤더에 두 토큰을 모두 추가해서 전송한다.)**
 
-Access Token이 만료되어도 Refresh Token이 유효하다면 새 Access Token을 발급해준다.<br>
-Refresh Token도 만료되었다면 다시 로그인을 시도해야 한다.
+Access Token이 만료되어도 Refresh Token이 유효하다면 서버(백엔드)가 새 Access Token을 발급해준다.<br>
+Refresh Token도 만료되었다면 다시 로그인부터 시도해야 한다.
 
-### AccessToken 재발급 로직
+<br>
+
+### 서버(백엔드)에서의 AccessToken 재발급 로직
 
 1. Refresh Token을 가져와 기한이 만료되었는지 확인한다.
 2. Refresh Token의 Claim에서 `AccountId`를 가져온다.
@@ -180,19 +289,29 @@ Blazor Server, API Server 프로젝트에 Nuget 패키지 관리자 -> 솔루션
 
 ## JWT 발급
 
+### JWT 구조
+
 JWT은 헤더(Header), 페이로드(Payload), 서명(Signature)의 3가지 파트로 나눠져 있다.<br>
+
 ![](https://velog.velcdn.com/images%2Fhahan%2Fpost%2Fb41e147b-69d0-41ad-9f23-5e1ab8ec35ce%2Fimage.png)
 
 - **헤더** : 어떤 알고리즘을 사용해 암호화 되었는지, 어떤 토큰을 사용하는지에 대한 정보
-- **페이로드** : 전달하려는 정보 (단, 노출될 수 있음)
+- **페이로드** : 전달하려는 정보 (단, 노출될 수 있기 때문에 최소한의 정보만 담아야 함)
 - **서명** : 검증을 위해 서버가 지정한 Signing Key
 
-여기서, Payload에 담는 정보를 클레임(`Claim`)이라고 한다.
+여기서, 페이로드에 담는 정보를 클레임(`Claim`)이라고 한다.
 
-토큰은 `JwtSecurityTokenHandler`와 `SecurityTokenDescriptor`를 통해 발급할 수 있다.<br>
+<br>
+
+### C#에서의 JWT 발급 방법
+
+C#에서 토큰은 `JwtSecurityTokenHandler`와 `SecurityTokenDescriptor`를 통해 발급할 수 있다.<br>
 
 - `JwtSecurityTokenHandler` : 토큰 생성 및 검증 클래스
 - `SecurityTokenDescriptor` : 토큰에 들어갈 정보를 담은 구조체
+  - `Subject` 필드 : `Claim`을 추가하는 영역
+  - `Expires` 필드 : 토큰 만료기간
+  - `SigningCredentials` 필드 : 토큰 검증을 위한 비밀 서명 키 지정
 
 ### 예시 코드
 
@@ -247,8 +366,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         });
 ```
 
-Program.cs에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 토큰 검증에 필요한 옵션들을 작성한다.<br>
-위 코드로는 Signing Key와 만료 기간에 대해서만 검증을 수행한다.
+Program.cs에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 인증(**`Authentication`**)에 필요한 파라미터를 설정한다.<br>
+위 코드의 옵션으로는 서명 키와 토큰의 유효기간만을 검증한다.
 
 옵션은 아래와 같은 것들이 있으며, 더 많은 옵션은 참고 문서에서 확인할 수 있다.
 
@@ -325,20 +444,93 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 # Server : 인증 적용
 
-## Authorize Attribute
-
 ```csharp
 // Program.cs
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthentication(); // 인증 처리
+app.UseAuthorization();  // 인가 처리
 ```
 
 Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
-인증이 필요한 **엔드포인트에 `[Authorize]` 어트리뷰트를 추가**하면, 앞서 설정한 토큰 인증이 수행된다.
+인증이 필요한 **엔드포인트에 `Authorize` 어트리뷰트를 추가**하면, 앞서 설정한 토큰에 대한 인증 및 인가 처리가 수행된다.
 
-다음은 컨트롤러 액션에 `[Authorize]` 어트리뷰트를 적용한 예시이다.
+HTTP 요청에 대한 인증 및 인가 파이프라인은 아래 이미지와 같다.
 
-![](images/Blazor_Auth/014.png)
+![](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/index/_static/middleware-pipeline.svg?view=aspnetcore-7.0)
+
+`UseRouting()` -> `UseCors()` -> `UseAuthentication()` -> `UseAuthorization()` ...<br>
+순으로 미들웨어를 거쳐 엔드포인트(각 컨트롤러의 액션)에 도달한다.
+
+<br>
+
+### 인증 미들웨어 : UseAuthentication
+
+인증 미들웨어는 등록된 인증 스키마에 따라 **사용자의 인증 데이터를 식별**하고 Claim을 추출한 다음,<br>
+이후에 인가 미들웨어(`Authorization`)에서 사용할 수 있도록 **`ClaimsPrincipal`을 구성 및 전달**한다.
+
+- **인증 스키마**
+
+  인증 처리를 수행할 체계의 종류를 의미한다.<br>
+  인증 미들웨어에 인증 스키마를 등록하면 스키마에 따라 인증 처리를 수행한다.<br>
+  본 프로젝트에서는 `JwtBearer`를 추가했으나, `Cookie` 등의 다른 스키마를 추가할 수도 있다.
+
+- **JwtBearer 스키마**
+
+  본 프로젝트의 경우, `AddJwtBearer`를 호출해 JwtBearer 인증 스키마를 등록했다.<br>
+  이 스키마는 요청의 `Authorization` 헤더에 있는 JWT 토큰을 확인한다.<br>
+  이후 JWT의 페이로드에 있는 Claim을 추출해 `ClaimsPrincipal`을 구성한 다음 인가 미들웨어(`Authorization`)로 전달한다.
+
+[참고 문서 : MSDN Authentication Concept](https://learn.microsoft.com/ko-kr/aspnet/core/security/authentication/?view=aspnetcore-5.0#authentication-scheme-2)
+
+<br>
+
+### 인가 미들웨어 : UseAuthorization
+
+인가 미들웨어는 인증 미들웨어로부터 제공받은 인증 데이터 `ClaimsPrincipal`을 기반으로<br>
+**엔드포인트에 대한 접근 권한**을 결정한다.
+
+컨트롤러 혹은 특정 액션(API)에 `[Authorize]` 어트리뷰트가 있다면 인가 처리를 수행한다.<br>
+인가 미들웨어를 사용하더라도, `[Authorize]`가 없는 엔드포인트에는 인증되지 않은 사용자도 접근할 수 있다.<br>
+
+<br>
+
+### Authorize Attribute
+
+`[Authorize]`가 있는 엔드포인트에는 인증된 사용자만 접근 가능하며, 인가 조건이 있다면 이를 충족해야 한다.<br>
+해당 어트리뷰트에는 `AuthenticationSchemes`, `Policy`, `Roles` 등의 조건을 설정할 수 있다.
+
+- `AuthenticationSchemes`
+
+  어느 인증 스키마로 권한을 부여할 것인지 지정할 수 있다.<br>
+  [참고 문서 : MSDN Authorize with a specific scheme](https://learn.microsoft.com/en-us/aspnet/core/security/authorization/limitingidentitybyscheme?view=aspnetcore-7.0)
+
+- `Policy`
+
+  `AddAuthorization`에서 `AddPoliy`로 추가한 인가 정책을 지정한다.<br>
+  [참고 문서 : MSDN 정책 기반 권한 부여](https://learn.microsoft.com/ko-kr/aspnet/core/security/authorization/policies?view=aspnetcore-7.0)
+
+- `Roles`
+
+  Claims의 Role Type에 따라 인가를 처리한다.<br>
+  [참고 문서 : MSDN 역할 기반 권한 부여](https://learn.microsoft.com/ko-kr/aspnet/core/security/authorization/roles?view=aspnetcore-7.0)
+
+아래는 `AccountId`라는 `Claim`을 포함해야 한다는 인가 정책(Policy)을 추가한 예시 코드이다.
+
+```csharp
+// Program.cs
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AccountIdPolicy", policy => policy.RequireClaim("AccountId"))
+});
+```
+
+```csharp
+// UserDataController.cs
+// UserData 컨트롤러에 AccountIdPolicy 정책 적용
+[Authorize(Policy = "AccountIdPolicy")]
+[ApiController]
+[Route("api/[controller]")]
+public class UserData {...}
+```
 
 <br>
 
