@@ -542,6 +542,8 @@ Card는 `Title`과 `<Body>`로 이루어진 직사각형 구성 요소이다.
 
 Title에 문자열을 지정해 상단의 제목을 설정할 수 있다.
 
+![](images/Blazor_Auth/019.PNG)
+
 - **Input** (Ant Design)
 
   ```html
@@ -563,6 +565,8 @@ Input 태그 내부에 `<Prefix>`와 `<Icon>`을 사용해 칸 왼쪽에 아이�
 
 `Placeholder`에 지정한 문구는 Input이 비어있을 때에 나타난다.<br>
 Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
+
+![](images/Blazor_Auth/020.PNG)
 
 - **Button** (Ant Design)
 
@@ -611,6 +615,8 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
 버튼에 **로딩 효과**를 주고싶다면 `Loading`에 bool타입 변수를 지정해 구현할 수 있다.
 
 버튼 클릭 시에 바인드할 함수는 `@onclick`에 지정 가능하다.<br>
+
+![](images/Blazor_Auth/021.PNG)
 
 - **ConfirmService** (Ant Design)
 
@@ -722,6 +728,8 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
 
 ### 사용한 주요 컴포넌트
 
+![](images/Blazor_Auth/022.PNG)
+
 - **Menu** (Ant Design)
 
 ```csharp
@@ -736,6 +744,8 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
 `Mode`에 Horizontal, Vertical 등 메뉴 배치 모드를 지정할 수 있다.<br>
 
 내부에 `MenuItem` 컴포넌트를 복수개 가질 수 있는 구조이다.
+
+![](images/Blazor_Auth/023.PNG)
 
 - **MenuItem** (Ant Design)
 
