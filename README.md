@@ -213,7 +213,8 @@ var tokenDescriptor = new SecurityTokenDescriptor
         // ... 그 외 클레임 추가
     }),
     Expires = expires,
-    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
+                                                SecurityAlgorithms.HmacSha256Signature)
 };
 
 // 토큰 생성
@@ -374,7 +375,8 @@ Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Ref
 ```csharp
 var requestMessage = new HttpRequestMessage(HttpMethod.Post, ApiPath);  // Request 메시지
 
-requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);  // 인증 토큰은 Authorization 헤더에 추가
+// 인증 토큰은 Authorization 헤더에 추가
+requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 requestMessage.Headers.Add("헤더명", "Value");                          // Header에 데이터 추가
 requestMessage.Headers.Remove("헤더명");                                // Header에서 데이터 삭제
@@ -392,7 +394,8 @@ Access Token이 만료되었지만 Refresh Token이 유효하여 Access Token을
 헤더에서 값을 가져오는 방법은 아래와 같다.
 
 ```csharp
-res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessToken); // out 파라미터 newAccessToken으로 값을 로드
+// out 파라미터 newAccessToken으로 값을 로드
+res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessToken);
 ```
 
 실제 값은 out 파라미터로 로드한 변수의 Value 필드에 저장되어있다.<br>
@@ -588,7 +591,8 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
         // 로그인 실패
         if (loginResult == null || loginResult.Result != ErrorCode.None)
         {
-            await ConfirmService.Show("로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.", "Error", ConfirmButtons.OK);
+            await ConfirmService.Show("로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.",
+                                      "Error", ConfirmButtons.OK);
             return;
         }
 
@@ -614,7 +618,7 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
   @inject IConfirmService ConfirmService
 
   @code {
-    await ConfirmService.Show("로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.", "Error", ConfirmButtons.OK);
+    await ConfirmService.Show("로그인에 실패했습니다.", "Error", ConfirmButtons.OK);
   }
   ```
 
@@ -780,7 +784,8 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
 - `CreateReqMsg`
 
   ```csharp
-  protected async Task<HttpRequestMessage> CreateReqMsg(HttpMethod method, string path, object? body, bool addHeader = true)
+  protected async Task<HttpRequestMessage> CreateReqMsg(HttpMethod method, string path, object? body,
+                                                        bool addHeader = true)
   {
       var requestMessage = new HttpRequestMessage(method, path);
 
@@ -819,7 +824,8 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
 - `AttachTokensToRequestHeader`
   ```csharp
   // AccessToken과 RefreshToken을 RequestMessage 헤더에 추가
-  protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken, string refreshToken)
+  protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken,
+                                                                        string refreshToken)
   {
       req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
       req.Headers.Remove("refresh_token");
@@ -890,7 +896,8 @@ ManagingTool.Server에서 인증에 사용되는 `TokenValidationParameters` 및
           ValidateAudience = false,
           ValidateIssuerSigningKey = true,
           ValidateLifetime = true,    // 토큰 유효성 검증 여부
-          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("SigningKey_Com2us")) // 비밀 서명 키
+          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("SigningKey_Com2us"))
+                                                      // 비밀 서명 키
       };
   }
   ```
@@ -898,7 +905,8 @@ ManagingTool.Server에서 인증에 사용되는 `TokenValidationParameters` 및
 - 인증 실패 시 핸들러
 
   ```csharp
-  public void OnAuthenticationFailedHandler(AuthenticationFailedContext context, JwtBearerOptions options)
+  public void OnAuthenticationFailedHandler(AuthenticationFailedContext context,
+                                            JwtBearerOptions options)
   {
       if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
       {
@@ -994,7 +1002,8 @@ ManagingTool.Server의 `TokenManager`는 토큰을 생성하고, 토큰에 담�
           new Claim("AccountId", accountId.ToString()),
           }),
           Expires = expires,
-          SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+          SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
+                                                      SecurityAlgorithms.HmacSha256Signature)
       };
 
       // 토큰 생성
