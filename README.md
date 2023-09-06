@@ -2,29 +2,32 @@
 
 ## 목차
 
-1. [프로젝트 개요](#프로젝트-개요)
-2. [경로 별 Layout 설정](#3-경로-별-layout-설정)
-3. [토큰 인증 방식](#토큰-인증-방식)
-4. Server `(Backend)`
+1. [개요](#개요)
+2. [Routing 별 레이아웃 설정](#routing-별-layout-설정)
+3. [토큰 인증 구조](#토큰-인증-구조)
+4. [Server : 토큰 발급](#server--토큰-발급)
    1. [JwtBearer 설치](#jwtbearer-설치)
-   2. [토큰 발급](#토큰-발급)
-   3. [토큰에서 Claim 추출](#토큰에서-claim-추출)
-   4. [JwtBearer 인증 옵션 설정](#jwtbearer-인증-옵션-설정)
-   5. [커스텀 인증 핸들러](#커스텀-인증-핸들러)
-   6. [엔드포인트에 인증 적용](#엔드포인트에-인증-적용)
-5. Client `(Frontend)`
-   1. [페이지 상속](#페이지-상속)
-   2. [세션 스토리지로 토큰 관리하기](#세션-스토리지로-토큰-관리하기)
-   3. [요청 헤더에 토큰 추가](#요청-헤더에-토큰-추가)
-   4. [응답 헤더에서 재발급 토큰 로드](#응답-헤더에서-재발급-토큰-로드)
+   2. [JWT 발급](#jwt-발급)
+5. [Server : 토큰 검증](#server--토큰-검증)
+   1. [JwtBearer 옵션 설정](#jwtbearer-옵션-설정)
+   2. [JWT에서 Claim 추출](#jwt에서-claim-추출)
+   3. [커스텀 핸들러](#커스텀-핸들러)
+6. [Server : 인증 적용](#server--인증-적용)
+   1. [Authorize Attribute](#authorize-attribute)
+7. [Client : 토큰 관리](#client--토큰-관리)
+   1. [세션 스토리지](#세션-스토리지)
+   2. [헤더에 토큰 추가](#헤더에-토큰-추가)
+   3. [헤더에서 재발급 토큰 로드](#헤더에서-재발급-토큰-로드)
+8. [예시 프로젝트 상세설명](#예시-프로젝트-상세설명)
 
 ---
 
-## 프로젝트 개요
+## 개요
 
-이 프로젝트는 [Blazor_Study](https://github.com/sueshinkr/Blazor_Study) 레포지터리의 내용을 기반으로 로그인 및 세션 관리 기능을 추가한 것이다. 변경사항 요약은 다음과 같다.
+이 프로젝트는 [Blazor_Study](https://github.com/sueshinkr/Blazor_Study) 레포지터리의 내용을 기반으로 로그인 및 세션 관리 기능을 추가한 것이다.
+<br>변경사항은 다음과 같다.
 
-### 1. 로그인 기능 추가
+### 1. 로그인 UI
 
 ![](images/Blazor_Auth/001.png)
 
@@ -54,7 +57,7 @@ Session Storage에 저장된 토큰이 만료되거나 오염된 경우 토큰�
 
 ---
 
-## 경로에 따른 Layout 설정
+## Routing 별 Layout 설정
 
 | 메인 화면                       | 로그인 이후 화면                |
 | ------------------------------- | ------------------------------- |
@@ -71,13 +74,35 @@ Blazor에서 라우팅은 **App.razor** 파일에서 설정 가능하다.<br>
 App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` 문을 사용해 레이아웃을 세팅해준다.<br/>
 이 프로젝트는 초기 페이지(`NavigationManager.BaseUri`)를 제외하고는 모두 AfterLoginLayout을 적용시켰다.
 
-![](images/Blazor_Auth/006.png)
+### 예시 코드
+
+```csharp
+@inject NavigationManager NavigationManager
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        // 현재 경로가 MainLayoutPath라면 MainLayout 사용
+        @if (NavigationManager.Uri.Equals(MainLayoutPath))
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        }
+        else // 그 외엔 AnotherLayout 사용
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(AnotherLayout)" />
+        }
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        // 라우팅 실패...
+    </NotFound>
+</Router>
+```
 
 <br>
 
 ---
 
-## 토큰 인증 방식
+## 토큰 인증 구조
 
 ### 최초 로그인
 
@@ -137,7 +162,7 @@ Refresh Token도 만료되었다면 다시 로그인을 시도해야 한다.
 
 ---
 
-# Server (Backend)
+# Server : 토큰 발급
 
 ## JwtBearer 설치
 
@@ -153,7 +178,7 @@ Blazor Server, API Server 프로젝트에 Nuget 패키지 관리자 -> 솔루션
 
 ---
 
-## 토큰 발급
+## JWT 발급
 
 JWT은 헤더(Header), 페이로드(Payload), 서명(Signature)의 3가지 파트로 나눠져 있다.<br>
 ![](https://velog.velcdn.com/images%2Fhahan%2Fpost%2Fb41e147b-69d0-41ad-9f23-5e1ab8ec35ce%2Fimage.png)
@@ -200,9 +225,50 @@ tokenHandler.WriteToken(token);
 
 ---
 
-## 토큰에서 Claim 추출
+# Server : 토큰 검증
 
-토큰에서 Claim을 추출할 때에도 `JwtSecurityTokenHandler`를 사용한다.
+## JwtBearer 옵션 설정
+
+```csharp
+// Program.cs
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = false,                                       // Issuer 검증 여부
+                ValidateAudience = false,                                     // Audience 검증 여부
+                ValidateIssuerSigningKey = true,                              // 비밀 서명 키 검증 여부
+                ValidateLifetime = true,                                      // 토큰 유효성 검증 여부
+                IssuerSigningKey = new SymmetricSecurityKey
+                                       (Encoding.UTF8.GetBytes("SigningKey")) // 비밀 서명 키
+            };
+        });
+```
+
+Program.cs에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 토큰 검증에 필요한 옵션들을 작성한다.<br>
+위 코드로는 Signing Key와 만료 기간에 대해서만 검증을 수행한다.
+
+옵션은 아래와 같은 것들이 있으며, 더 많은 옵션은 참고 문서에서 확인할 수 있다.
+
+| 옵션                     | 설명                                       |
+| ------------------------ | ------------------------------------------ |
+| ValidateIssuer           | Issuer(토큰 발행자)에 대한 검증 여부       |
+| ValidateAudience         | Audience(토큰 대상자)에 대한 검증 여부     |
+| ValidateIssuerSigningKey | Signing Key(비밀 서명 키)에 대한 검증 여부 |
+| ValidateLifetime         | 만료 기간에 대한 검증 여부                 |
+| IssuerSigningKey         | 비밀 서명키 문자열                         |
+
+[참고 문서 : MSDN TokenValidationParameters](https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters?view=msal-web-dotnet-latest)
+
+<br>
+
+---
+
+## JWT에서 Claim 추출
+
+`JwtSecurityTokenHandler`를 사용해 토큰에서 Claim을 추출한다.<br>
+토큰의 Claim은 노출될 위험이 있으므로 이에 주의하여 최소한의 정보를 담아야 한다.
 
 ```csharp
 var handler = new JwtSecurityTokenHandler();
@@ -223,49 +289,12 @@ return claim.Value;
 
 ---
 
-## JwtBearer 인증 옵션 설정
-
-```csharp
-// Program.cs
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = false,                                       // Issuer 검증 여부
-                ValidateAudience = false,                                     // Audience 검증 여부
-                ValidateIssuerSigningKey = true,                              // 비밀 서명 키 검증 여부
-                ValidateLifetime = true,                                      // 토큰 유효성 검증 여부
-                IssuerSigningKey = new SymmetricSecurityKey
-                                       (Encoding.UTF8.GetBytes("SigningKey")) // 비밀 서명 키
-            };
-        });
-```
-
-Program.cs에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 토큰 검증에 필요한 옵션들을 작성한다.
-
-옵션은 아래와 같은 것들이 있으며, 더 많은 옵션은 참고 문서에서 확인할 수 있다.
-
-| 옵션                     | 설명                                       |
-| ------------------------ | ------------------------------------------ |
-| ValidateIssuer           | Issuer(토큰 발행자)에 대한 검증 여부       |
-| ValidateAudience         | Audience(토큰 대상자)에 대한 검증 여부     |
-| ValidateIssuerSigningKey | Signing Key(비밀 서명 키)에 대한 검증 여부 |
-| ValidateLifetime         | 만료 기간에 대한 검증 여부                 |
-| IssuerSigningKey         | 비밀 서명키 문자열                         |
-
-[참고 문서 : MSDN TokenValidationParameters](https://learn.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.tokens.tokenvalidationparameters?view=msal-web-dotnet-latest)
-
-<br>
-
----
-
-## 커스텀 인증 핸들러
+## 커스텀 핸들러
 
 ### JwtBearerEvents
 
-Program.cs에서 JwtBearer를 추가할 때, `options.Events`를 정의할 수 있다.<br>
-인증 성공, 인증 실패 등의 상황에 따라 람다식 형태로 커스텀 핸들러를 지정해 사용한다.
+JwtBearer의 `options.Events`에서 인증 성공/실패 상황에 따라 동작을 정의할 수 있다.<br>
+람다식 형태로 사용한다.
 
 ```csharp
 // Program.cs
@@ -289,76 +318,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 [참고 문서 : MSDN JwtBearerEvents](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.jwtbearer.jwtbearerevents?view=aspnetcore-7.0)
 
-### 예시 코드
-
-이 프로젝트에서는 `OnAuthenticationFailed`에 대한 커스텀 핸들러를 사용하고 있다.<br>
-예시 코드는 아래와 같으며, 실패 시에 Access Token을 재발급하는 코드이다.
-
-```csharp
-public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext context, JwtBearerOptions options)
-{
-    // 토큰의 유효기간이 만료되어 실패한 경우
-    if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-    {
-        // 리프레시 토큰 가져오기
-        GetRefreshToken(context);
-
-        try
-        {
-            new JwtSecurityTokenHandler().ValidateToken(refreshToken, options.TokenValidationParameters,
-                                                        out var validatedToken);
-
-            // 리프레시 토큰의 만료 시간 확인
-            if (validatedToken.ValidTo < DateTime.UtcNow)
-            {
-                context.Response.StatusCode = 401; // Unauthorized
-                return;
-            }
-        }
-        catch
-        {
-            context.Response.StatusCode = 401; // Unauthorized
-            return;
-        }
-
-        // 리프레시 토큰에서 AccountId 가져오기
-        var accountId = TokenManager.GetClaim(refreshToken);
-        if (accountId == 0)
-        {
-            context.Response.StatusCode = 401; // Unauthorized
-            return;
-        }
-
-        // DB의 RefreshToken과 비교
-        var managingDb = context.HttpContext.RequestServices.GetRequiredService<IManagingDb>();
-        var DBRefreshToken = await managingDb.GetRefreshTokenByAccountId(accountId);
-        if (DBRefreshToken != refreshToken)
-        {
-            context.Response.StatusCode = 401; // Unauthorized
-            return;
-        }
-
-        // 새 액세스 토큰 발급 및 응답 헤더에 추가
-        string newAccessToken = TokenManager.CreateToken(true, accountId);
-        context.Response.Headers.Add("X-NEW-ACCESS-TOKEN", newAccessToken);
-
-        // 요청을 정상 수행하도록 ClaimsPrincipal을 설정하여 Success() 처리
-        ClaimsIdentity claims = new ClaimsIdentity(new[]
-                    {
-                        new Claim("AccountId", accountId.ToString()),
-                    }, JwtBearerDefaults.AuthenticationScheme);
-
-        context.Principal = new ClaimsPrincipal(new ClaimsIdentity[] { claims });
-        context.Success();
-    }
-}
-```
-
 <br>
 
 ---
 
-## 엔드포인트에 인증 적용
+# Server : 인증 적용
+
+## Authorize Attribute
 
 ```csharp
 // Program.cs
@@ -367,7 +333,7 @@ app.UseAuthorization();
 ```
 
 Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
-**엔드포인트에 `[Authorize]` 어트리뷰트를 추가**하면, 앞서 설정한 토큰 인증이 수행된다.
+인증이 필요한 **엔드포인트에 `[Authorize]` 어트리뷰트를 추가**하면, 앞서 설정한 토큰 인증이 수행된다.
 
 다음은 컨트롤러 액션에 `[Authorize]` 어트리뷰트를 적용한 예시이다.
 
@@ -377,19 +343,94 @@ Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
 
 ---
 
-# Client (Frontend)
+# Client : 토큰 관리
 
-## 페이지 상속
+## 세션 스토리지
 
-**페이지 상속**을 통해 모든 Pages에 일괄 적용할 코드를 작성할 수 있다.
+세션 스토리지는 **브라우저의 탭 단위에서 데이터를 저장할 수 있는 공간**이다.<br>
+브라우저를 닫거나 해당 탭을 닫으면 저장 데이터가 사라진다.
 
-이 프로젝트에서는 **페이지 렌더링 전에 토큰을 검사하는 최상위 페이지** `AuthPage`를 정의했다.<br>
-그리고 인증이 필요한 모든 페이지에 `AuthPage`를 상속시켜 모든 페이지에서 세션 체크를 진행하도록 하고 있다.
-
-### 예시 코드
+`JSRuntime` 서비스를 통해 세션 스토리지에 토큰을 저장, 수정, 삭제할 수 있다.<br>
+세션 스토리지에는 key-value 형태로 값을 저장할 수 있으며, 사용 방식은 아래와 같다.
 
 ```csharp
-// AuthPage.razor
+await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "Key값", Value); // 데이터 저장
+await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "Key값");    // 데이터 로드
+```
+
+<br>
+
+---
+
+## 헤더에 토큰 추가
+
+Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Refresh Token<br>
+두 가지 모두를 헤더에 추가해야 한다.
+
+**이때, 인증 토큰은 `Authorization` 헤더에 추가해야 한다.**<br>
+
+헤더에 토큰을 저장하는 방법은 아래와 같다.<br>
+
+```csharp
+var requestMessage = new HttpRequestMessage(HttpMethod.Post, ApiPath);  // Request 메시지
+
+requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);  // 인증 토큰은 Authorization 헤더에 추가
+
+requestMessage.Headers.Add("헤더명", "Value");                          // Header에 데이터 추가
+requestMessage.Headers.Remove("헤더명");                                // Header에서 데이터 삭제
+```
+
+<br>
+
+---
+
+## 헤더에서 재발급 토큰 로드
+
+Access Token이 만료되었지만 Refresh Token이 유효하여 Access Token을 재발급받은 경우,<br>
+본 프로젝트의 서버는 `X-NEW-ACCESS-TOKEN` 헤더에 재발급한 토큰을 추가해 전송한다.
+
+헤더에서 값을 가져오는 방법은 아래와 같다.
+
+```csharp
+res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessToken); // out 파라미터 newAccessToken으로 값을 로드
+```
+
+실제 값은 out 파라미터로 로드한 변수의 Value 필드에 저장되어있다.<br>
+따라서 다음과 같이 사용 가능하다.
+
+```csharp
+Console.WriteLine(newAccessToken.Value);
+```
+
+<br>
+
+---
+
+# 예시 프로젝트 상세설명
+
+## 페이지 공통
+
+API 통신이 필요할 때 해당하는 `Service`의 함수를 호출한다.<br>
+각 서비스는 Blazor Server로 API를 호출하고, Blazor Server는 상황에 따라 **인증 처리를 한 후 응답**을 보낸다.
+
+Blazor Server에서 제공하는 데이터는 실제 DB와 연동되지 않은 더미 데이터이다.
+
+**API를 호출하거나, 페이지에 진입할 때마다 토큰이 유효한지 인증**한다.<br>
+인증에 실패하면 세션 스토리지의 토큰이 무효화되고, 로그인 화면으로 강제 이동한다.
+
+<br>
+
+---
+
+## 최상위 페이지 : AuthPage.razor
+
+본 프로젝트는 로그인 이후의 모든 페이지에 진입할 때마다 토큰 인증을 진행하고 있다.<br>
+따라서 모든 페이지가 상속하는 최상위 페이지에 인증 로직을 구현했다.
+
+별도의 View(화면 구성 요소)는 존재하지 않고, 토큰 인증을 위한 `@code` 로직만 존재한다.
+
+```csharp
+@inject IConfirmService ConfirmService
 @inject NavigationManager NavigationManager
 @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
@@ -398,8 +439,7 @@ Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
 
 
 @code {
-
-    // 페이지가 렌더링되기 전 토큰 검사 수행
+    // 페이지가 렌더링되기 전에 수행
     protected override async Task OnInitializedAsync()
     {
         var (verified, resetToken) = await CheckSession();
@@ -410,7 +450,18 @@ Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
         }
     }
 
-    // 세션 스토리지의 토큰 값으로 유효성 검사
+    // 세션 스토리지의 토큰을 무효화하고 로그인 페이지로 강제 이동
+    protected async Task MoveToLogin(bool resetToken = false)
+    {
+        if (resetToken)
+        {
+            await sessionStorage.SetItemAsync<string>("accesstoken", "");
+            await sessionStorage.SetItemAsync<string>("refreshtoken", "");
+        }
+        NavigationManager.NavigateTo("/", true);
+    }
+
+    // 세션 토큰이 유효한지 확인
     async Task<(bool, bool)> CheckSession()
     {
         var accessToken = await sessionStorage.GetItemAsync<string>("accesstoken");
@@ -419,36 +470,15 @@ Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
             return (false, false);
         }
 
-        // 유효성 검증 결과(verified), 토큰 무효화 여부(resetToken) 리턴
         var verified = await AuthService.CheckToken();
         return (verified == ErrorCode.None, true);
     }
-
-    // 로그인 페이지로 이동
-    protected async Task MoveToLogin(bool resetToken = false)
-    {
-        if (resetToken)
-        {
-            // 무효화 여부가 true면 세션 스토리지의 토큰을 빈 문자열로 만듦
-            await sessionStorage.SetItemAsync<string>("accesstoken", "");
-            await sessionStorage.SetItemAsync<string>("refreshtoken", "");
-        }
-        NavigationManager.NavigateTo("/", true);
-    }
-
-
 }
 ```
 
-별도의 View는 존재하지 않고, `@code` 영역만 정의되어 있다.
-
-페이지가 렌더링되기 전에 호출되는 `OnInitializedAsync` 에서 세션을 체크하고,<br>
-토큰이 유효하지 않다면 Session Storage의 토큰을 무효화한 후 로그인 페이지로 다시 이동하도록 구현했다.
-
-### 상속받은 페이지에서의 사용 예시
+인증이 필요한 모든 페이지(로그인 화면을 제외한 모든 페이지)는 AuthPage를 상속받아 다음과 같이 사용한다.
 
 ```csharp
-// NeedAuthPage.cs
 @inherits AuthPage
 
 // ...
@@ -462,118 +492,542 @@ Program.cs에서 `UseAuthentication()`, `UseAuthorization()` 호출 후<br>
 }
 ```
 
-코드 최상단에 `@inherits` 를 사용해 `AuthPage`를 상속받게 한다.
-
-상속받은 페이지에서 `OnInitializedAsync`를 추가 작성해야 한다면,<br>
-먼저 `base`의 `OnInitializedAsync`를 호출한 후 진행해야 한다.
-
-토큰 검사 외에도 일괄 적용되어야 하는 로직이 있다면 활용할 수 있다.
+상속받은 페이지에서 `OnInitializedAsync` 단계에 수행해야할 작업이 있다면<br>
+`base`의 `OnInitializedAsync`를 먼저 호출한 후 수행해야 한다.
 
 <br>
 
 ---
 
-## 세션 스토리지로 토큰 관리
+## 로그인 페이지 : Login.razor
 
-`JSRuntime` 서비스를 통해 Session Storage에 토큰을 저장, 수정, 삭제할 수 있다.<br>
-Session Storage에는 key-value 형태로 값을 저장할 수 있으며, 사용 방식은 아래와 같다.
+![](images/Blazor_Auth/001.png)
 
-```csharp
-await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "Key값", Value); // 데이터 저장
-await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "Key값");    // 데이터 로드
-```
+### 사용된 주요 컴포넌트
 
-### 예시 코드
+- **GridRow** (Ant Design)
+  ```html
+  <GridRow Justify="center">
+    <GridCol Span="5">
+      <!-- ...그리드 안에 들어갈 View... -->
+    </GridCol>
+  </GridRow>
+  ```
 
-본 프로젝트에서는 Session Storage에 토큰을 Set하거나 Get해주는<br>
-서비스 클래스 `TokenManager`를 구현해 사용하고 있다.
+`AntDesign` 라이브러리의 Grid 시스템을 사용해 화면을 구성했다.<br>
 
-아래는 본 프로젝트에서 구현한 예시 코드이다.
+`AntDesign`의 Grid는 24등분을 기반으로 한다.<br>
+`Span`에 지정한 값이 24등분한 Grid 내에서의 크기가 된다.<br>
 
-```csharp
-// TokenManager.cs
+위 예시 코드에서 `GridCol` 요소는 24등분 그리드를 가로로 5칸 차지하는 크기를 갖게 된다.<br>
+가로로 한 줄을 전부 차지하게 하려면 Span값을 24로 지정하면 된다.
 
-// 세션 스토리지에서 토큰들을 가져옴
-public async Task<(string, string)> GetTokensFromSessionStorage()
-{
-    var accessToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
-    var refreshToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "refreshtoken");
+`Justify`는 해당 구성 요소의 정렬을 지정한다. `center`로 하면 상위 요소의 가운데 위치에 정렬된다.
 
-    return (accessToken, refreshToken);
-}
+- **Card** (Ant Design)
 
-// 세션 스토리지의 액세스 토큰을 갱신
-public async Task SetNewAccessTokenToSessionStorage(string token)
-{
-    await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "accesstoken", token);
-}
-```
+  ```csharp
+  <Card Title="Login" Style="width:100;">
+    <Body>
+      <!-- ...카드 바디 안에 들어갈 View... -->
+    </Body>
+  </Card>
+  ```
 
----
+`AntDesign` 라이브러리의 Card 컴포넌트를 사용해 로그인 창을 구성했다.<br>
+Card는 `Title`과 `<Body>`로 이루어진 직사각형 구성 요소이다.
 
-## 요청 헤더에 토큰 추가
+Title에 문자열을 지정해 상단의 제목을 설정할 수 있다.
 
-Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Refresh Token<br>
-두 가지 모두를 헤더에 추가해야 한다.
+- **Input** (Ant Design)
 
-헤더에 토큰을 저장하는 방법은 아래와 같다.<br>
+  ```html
+  <AntDesign.Input Placeholder="Email" @bind-Value="@email">
+    <Prefix>
+      <Icon Type="user" />
+    </Prefix>
+  </AntDesign.Input>
 
-```csharp
-var requestMessage = new HttpRequestMessage(HttpMethod.Post, ApiPath);  // Request 메시지
+  @code { public string email { get; set; } = string.Empty; }
+  ```
 
-requestMessage.Headers.Add("헤더명", "Value");                          // Header에 데이터 추가
-requestMessage.Headers.Remove("헤더명");                                // Header에서 데이터 삭제
-```
+`AntDesign` 라이브러리의 Input 컴포넌트를 사용해 이메일, 비밀번호 입력 칸을 구성했다.<br>
+Input 태그 내부에 `<Prefix>`와 `<Icon>`을 사용해 칸 왼쪽에 아이콘을 설정할 수 있다.<br>
 
-### 예시 코드
+설정할 수 있는 아이콘은 라이브러리 문서에서 확인 가능하다.
 
-본 프로젝트에서는 `Authorization` 헤더에 Access Token을,<br>
-`refresh_token` 커스텀 헤더에 Refresh Token을 추가했다.
+[참고 문서 : AntDesign Icon](https://ant.design/components/icon)
 
-아래는 본 프로젝트에서 구현한 예시 코드이다.
+`Placeholder`에 지정한 문구는 Input이 비어있을 때에 나타난다.<br>
+Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
 
-```csharp
-// BaseService.cs
+- **Button** (Ant Design)
 
-// AccessToken과 RefreshToken을 RequestMessage 헤더에 추가
-protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken, string refreshToken)
-{
-    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-    req.Headers.Remove("refresh_token");
-    req.Headers.Add("refresh_token", refreshToken);
-}
-```
+  ```csharp
+  <Button Type="@AntDesign.ButtonType.Primary" @onclick="OnClickLogin" Loading="loading">
+  				Login
+  </Button>
 
-<br>
+  @code {
+    public bool loading { get; set; } = false;
 
----
-
-## 응답 헤더에서 재발급 토큰 로드
-
-Access Token이 만료되었지만 Refresh Token이 유효하여 Access Token을 재발급받은 경우,<br>
-본 프로젝트의 서버는 `X-NEW-ACCESS-TOKEN` 헤더에 재발급한 토큰을 추가해 전송한다.
-
-헤더에서 값을 가져오는 방법은 아래와 같다.
-
-```csharp
-req.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessToken); // out 파라미터 newAccessToken으로 값을 로드
-```
-
-### 예시 코드
-
-아래는 본 프로젝트에서 구현한 예시 코드이다.
-
-```csharp
-// TokenManager.cs
-public async Task UpdateAccessTokenIfPresent(HttpResponseMessage res)
-{
-    if (res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessTokenEnum))
+    async Task OnClickLogin()
     {
-        var newAccessToken = newAccessTokenEnum.FirstOrDefault();
-        if (newAccessToken != null || newAccessToken != string.Empty)
+        // 빈 칸이 있을 때
+        if (email.Equals("") || password.Equals(""))
         {
-            await SetNewAccessTokenToSessionStorage(newAccessToken!);
+            await ConfirmService.Show("이메일과 비밀번호를 입력해주세요.", "Error", ConfirmButtons.OK);
+            return;
         }
+
+        // Auth Service에 로그인 요청
+        loading = true;
+        var loginResult = await AuthService.Login(email, password);
+        loading = false;
+
+        // 로그인 실패
+        if (loginResult == null || loginResult.Result != ErrorCode.None)
+        {
+            await ConfirmService.Show("로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.", "Error", ConfirmButtons.OK);
+            return;
+        }
+
+        // 로그인 성공
+        await sessionStorage.SetItemAsStringAsync("accesstoken", loginResult.accessToken);
+        await sessionStorage.SetItemAsStringAsync("refreshtoken", loginResult.refreshToken);
+
+        NavigationManager.NavigateTo("/Lookup_Specific_User");
+    }
+  }
+  ```
+
+`AntDesign` 라이브러리의 Button 컴포넌트를 사용해 로그인 요청 버튼을 구성했다.<br>
+
+**버튼 색상**은 `Type`으로 지정 가능하다.<br>
+버튼에 **로딩 효과**를 주고싶다면 `Loading`에 bool타입 변수를 지정해 구현할 수 있다.
+
+버튼 클릭 시에 바인드할 함수는 `@onclick`에 지정 가능하다.<br>
+
+- **ConfirmService** (Ant Design)
+
+  ```csharp
+  @inject IConfirmService ConfirmService
+
+  @code {
+    await ConfirmService.Show("로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.", "Error", ConfirmButtons.OK);
+  }
+  ```
+
+`AntDesign` 라이브러리의 `ConfirmService`를 주입받아 모달 창을 띄울 수 있다.<br>
+
+<br>
+
+---
+
+## 로그인 페이지 레이아웃 : MainLayout.razor
+
+![](images/Blazor_Auth/004.png)
+
+```csharp
+@inherits LayoutComponentBase
+
+<div style="background-color:#001529; height:100vh;">
+    <main>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<RadzenDialog />
+<RadzenNotification/>
+<RadzenContextMenu/>
+<RadzenTooltip/>
+```
+
+배경색을 남색으로 지정하고, div의 높이 `height`를 `100vh`로 지정했다.<br>
+화면 전체가 남색으로 가득차게 하기 위함이다.
+
+---
+
+## 로그인 이후 페이지 레이아웃 : AfterLoginLayout.razor
+
+![](images/Blazor_Auth/002.png)
+
+```csharp
+@inherits LayoutComponentBase
+
+<div>
+    <NavMenu />
+
+    <main>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<RadzenDialog />
+<RadzenNotification />
+<RadzenContextMenu />
+<RadzenTooltip />
+```
+
+`NavMenu` 컴포넌트를 상단에 가지고 있고, 하단에는 각 View가 배치되는 구성이다.
+
+---
+
+## 네비게이션 바 레이아웃 : NavMenu.razor
+
+```csharp
+@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+<Header Class="header" Style="width:100%">
+    <div style="display:inline-block; margin-right:1.5vw;">
+        <h4 style="color:white"><Icon Type="setting" Theme="outline" /> ManagingTool</h4>
+    </div>
+    <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" Style="display:inline-block">
+        <MenuItem Key="1" RouterLink="/Lookup_Specific_User">
+            <Icon Type="user" Theme="outline" />
+            Lookup Specific User
+        </MenuItem>
+        <MenuItem Key="2" RouterLink="/Lookup_Multiple_Users">
+            <Icon Type="user" Theme="outline" />
+            Lookup Multiple Users
+        </MenuItem>
+        <MenuItem Key="3" @onclick="Logout">
+            <Icon Type="logout" Theme="outline" />
+            Logout
+        </MenuItem>
+    </Menu>
+</Header>
+
+@code {
+
+    async Task Logout()
+    {
+        await sessionStorage.RemoveItemAsync("accesstoken");
+        await sessionStorage.RemoveItemAsync("refreshtoken");
+        NavigationManager.NavigateTo("/");
     }
 }
 ```
+
+상단에 수평 네비게이션 바 형태로 배치시키기 위해 `AntDesign`에서 제공하는 템플릿을 사용했다.<br>
+
+### 사용한 주요 컴포넌트
+
+- **Menu** (Ant Design)
+
+```csharp
+<Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" Style="display:inline-block">
+    <MenuItem>
+        <!-- ...MenuItem 내부 구성 요소... -->
+    </MenuItem>
+</Menu>
+```
+
+`Theme`에 테마 타입을 지정할 수 있다.<br>
+`Mode`에 Horizontal, Vertical 등 메뉴 배치 모드를 지정할 수 있다.<br>
+
+내부에 `MenuItem` 컴포넌트를 복수개 가질 수 있는 구조이다.
+
+- **MenuItem** (Ant Design)
+
+```csharp
+<MenuItem Key="1" RouterLink="/Lookup_Specific_User">
+    <Icon Type="user" Theme="outline" />
+    Lookup Specific User
+</MenuItem>
+```
+
+`RouterLink`에 해당 메뉴를 누르면 어느 페이지로 이동시킬지 경로를 지정한다.<br>
+`Key`값으로 메뉴마다 식별 가능한 값을 지정할 수 있다.<br>
+
+`MenuItem` 내부에 아이콘과 메뉴 이름을 설정할 수 있다.
+
+```csharp
+<MenuItem Key="3" @onclick="Logout">
+    <Icon Type="logout" Theme="outline" />
+    Logout
+</MenuItem>
+
+@code {
+    async Task Logout()
+    {
+        await sessionStorage.RemoveItemAsync("accesstoken");
+        await sessionStorage.RemoveItemAsync("refreshtoken");
+        NavigationManager.NavigateTo("/");
+    }
+}
+```
+
+`RouterLink`를 지정하지 않거나, `@onclick`으로 클릭 시의 함수를 바인드할 수 있다.<br>
+본 프로젝트에서는 Logout 메뉴에 대해 별도의 경로를 지정하지 않고, 함수 수행 후 로그인 화면으로 돌아가도록 처리했다.
+
+<br>
+
+---
+
+## 서비스 공통 : BaseService.cs
+
+클라이언트에서 서버로 요청을 보낼 때, 세션 스토리지에 있는 두 가지 토큰을 모두 헤더에 추가해서 전송해야 한다.
+
+이에 대한 공통 함수들을 BaseService에 구현했으며, 모든 서비스는 BaseService를 상속받아<br>
+하단의 기능을 공유한다.
+
+- `CreateReqMsg`
+
+  ```csharp
+  protected async Task<HttpRequestMessage> CreateReqMsg(HttpMethod method, string path, object? body, bool addHeader = true)
+  {
+      var requestMessage = new HttpRequestMessage(method, path);
+
+      // Body 직렬화
+      if (body != null)
+      {
+          SerializeReqBody(ref requestMessage, body);
+      }
+
+      // 헤더에 토큰 추가
+      if (addHeader)
+      {
+          var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
+          AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
+      }
+
+      return requestMessage;
+  }
+  ```
+
+  Http 메소드 타입, API 경로, 직렬화할 JSON Body, 헤더 추가 여부를 매개변수로 받아 RequestMessage를 생성한다.
+
+- `SerializeReqBody`
+
+  ```csharp
+  // Request Body를 JSON 직렬화하여 Body에 저장
+  void SerializeReqBody(ref HttpRequestMessage reqMsg, object reqBody)
+  {
+      string requestBody = JsonSerializer.Serialize(reqBody);
+      reqMsg.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+  }
+  ```
+
+  Object를 Json 직렬화한 다음 요청 바디에 저장한다.
+
+- `AttachTokensToRequestHeader`
+  ```csharp
+  // AccessToken과 RefreshToken을 RequestMessage 헤더에 추가
+  protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken, string refreshToken)
+  {
+      req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+      req.Headers.Remove("refresh_token");
+      req.Headers.Add("refresh_token", refreshToken);
+  }
+  ```
+  요청 헤더에 토큰을 추가한다.
+
+<br>
+
+---
+
+## AuthService.cs
+
+ManagingTool 로그인과 토큰 유효성 검사 요청을 담당한다.
+
+- `CheckToken`
+
+  헤더에 토큰을 추가해 GET 메소드로 검사 요청을 보낸다. 실패 시 `ErrorCode.Unauthorized`를 반환한다.
+
+- `Login`
+
+  이메일과 패스워드를 전송받아 POST 메소드로 로그인을 시도한다. 헤더에 토큰을 붙이지 않아도 된다.
+
+---
+
+## UserService.cs
+
+로그인 이후 운영 API를 호출할 때 사용되는 서비스이다.<br>
+유저 데이터에 대한 API 호출을 담당한다. 제공되는 데이터는 모두 더미 데이터이다.
+
+모든 요청의 헤더에 토큰 인증이 필요하다.
+
+- `GetUserBasicInfo`
+
+  UserID를 받아, 해당하는 유저의 기본 정보를 불러온다.
+
+- `GetMultipleUserBasicInfo`
+
+  Category와 Max, Min Value를 받아 범위에 해당하는 유저들의 정보를 불러온다.
+
+- `GetUserItemList`
+
+  UserID를 받아 해당하는 유저의 아이템 목록을 가져온다.
+
+- `GetUserMailList`
+
+  UserID를 받아 해당하는 유저의 메일 목록을 가져온다.
+
+---
+
+## 서버 인증 옵션 및 핸들러 정의 : JwtBearerConfig.cs
+
+ManagingTool.Server에서 인증에 사용되는 `TokenValidationParameters` 및<br>
+인증 이벤트 핸들러를 정의한 파일이다.
+
+- 인증 옵션
+
+  ```csharp
+  public TokenValidationParameters tokenValidatedParameters { get; }
+
+  public JwtBearerConfig()
+  {
+      // 인증 옵션 파라미터 정의
+      tokenValidatedParameters = new TokenValidationParameters
+      {
+          ValidateIssuer = false,
+          ValidateAudience = false,
+          ValidateIssuerSigningKey = true,
+          ValidateLifetime = true,    // 토큰 유효성 검증 여부
+          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("SigningKey_Com2us")) // 비밀 서명 키
+      };
+  }
+  ```
+
+- 인증 실패 시 핸들러
+
+  ```csharp
+  public void OnAuthenticationFailedHandler(AuthenticationFailedContext context, JwtBearerOptions options)
+  {
+      if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+      {
+          // 리프레시 토큰 가져오기
+          if (GetRefreshToken(context, out var refreshToken) == false)
+          {
+              context.Response.StatusCode = 401;
+              return;
+          }
+
+          // 리프레시 토큰이 만료되었는지 확인
+          if (IsExpiredToken(context, refreshToken, options))
+          {
+              context.Response.StatusCode = 401;
+              return;
+          }
+
+          // 리프레시 토큰에서 AccountId 가져오기
+          var accountId = TokenManager.GetClaim(refreshToken);
+          if (accountId == 0)
+          {
+              context.Response.StatusCode = 401;
+              return;
+          }
+
+          // DB의 RefreshToken과 비교
+          if (AreEqualWithDBRefreshToken(accountId, refreshToken) == false)
+          {
+              context.Response.StatusCode = 401;
+              return;
+          }
+
+          // 새 액세스 토큰 발급
+          string newAccessToken = TokenManager.CreateToken(true, accountId);
+          context.Response.Headers.Add("X-NEW-ACCESS-TOKEN", newAccessToken);
+
+          // 요청 정상 수행
+          ClaimsIdentity claims = new ClaimsIdentity(new[]
+          {
+              new Claim("AccountId", accountId.ToString()),
+          }, JwtBearerDefaults.AuthenticationScheme);
+
+          context.Principal = new ClaimsPrincipal(new ClaimsIdentity[] { claims });
+
+          context.Success();
+      }
+  }
+  ```
+
+  `Authorization` 헤더에 담긴 Access Token 인증이 실패했을 경우에 수행되는 핸들러이다.<br>
+  Refresh Token이 유효하다면 새 Access Token을 재발급하고, 요청을 정상 처리한다.
+
+<br>
+
+---
+
+## 서버 토큰 관리 클래스 : TokenManager.cs
+
+ManagingTool.Server의 `TokenManager`는 토큰을 생성하고, 토큰에 담긴 Claim을 추출할 수 있다.
+
+- `CreateTokens`
+
+  ```csharp
+  // AccessToken과 RefreshToken 생성
+  public static Tuple<string, string> CreateTokens(Int64 accountId)
+  {
+      var accessToken = CreateToken(true, accountId);
+      var refreshToken = CreateToken(false, accountId);
+
+      return new Tuple<string, string>(accessToken, refreshToken);
+  }
+  ```
+
+  Access Token과 Refresh Token을 생성해 리턴한다.
+
+- `CreateToken`
+
+  ```csharp
+  // 토큰 종류에 따라 유효시간을 정하여 생성
+  public static string CreateToken(bool isAccessToken, Int64 accountId)
+  {
+      var tokenHandler = new JwtSecurityTokenHandler();
+
+      // Signing Key와 만료기간 설정
+      var key = Encoding.ASCII.GetBytes(_signingKey);
+      var expires = isAccessToken ? DateTime.UtcNow.AddHours(1) : DateTime.UtcNow.AddHours(6);
+
+      // 토큰 구조체 정의
+      var tokenDescriptor = new SecurityTokenDescriptor
+      {
+          Subject = new ClaimsIdentity(new Claim[]
+          {
+          new Claim("AccountId", accountId.ToString()),
+          }),
+          Expires = expires,
+          SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+      };
+
+      // 토큰 생성
+      var token = tokenHandler.CreateToken(tokenDescriptor);
+      return tokenHandler.WriteToken(token);
+  }
+  ```
+
+  토큰 종류에 따라 만료 기간을 다르게 하여 토큰을 생성한다.
+
+- `GetClaim`
+
+  ```csharp
+  // 토큰에 담긴 정보(Claim) 추출
+  public static Int64 GetClaim(string token)
+  {
+      var handler = new JwtSecurityTokenHandler();
+      var refreshToken = handler.ReadJwtToken(token);
+
+      // AccountId Claim 추출
+      var accountIdClaim = refreshToken.Claims.FirstOrDefault(claim => claim.Type.Equals("AccountId"));
+
+      if (accountIdClaim != null)
+      {
+          return Int64.Parse(accountIdClaim.Value);
+      }
+
+      return 0;
+  }
+  ```
+
+  토큰의 페이로드에 담긴 Claim을 추출해낸다.
+
+<br>
+
+---
