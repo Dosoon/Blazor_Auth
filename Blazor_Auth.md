@@ -16,7 +16,7 @@
    1. [페이지 상속](#페이지-상속)
    2. [세션 스토리지로 토큰 관리하기](#세션-스토리지로-토큰-관리하기)
    3. [요청 헤더에 토큰 추가](#요청-헤더에-토큰-추가)
-   4. [Access Token 갱신하기](#access-token-갱신하기)
+   4. [응답 헤더에서 재발급 토큰 로드](#응답-헤더에서-재발급-토큰-로드)
 
 ---
 
@@ -72,103 +72,6 @@ App.razor에서 NavigationManager를 주입받고, 경로에 따라 `@if-else` �
 이 프로젝트는 초기 페이지(`NavigationManager.BaseUri`)를 제외하고는 모두 AfterLoginLayout을 적용시켰다.
 
 ![](images/Blazor_Auth/006.png)
-
-### 예시 코드
-
-1. MainLayout (로그인 화면)
-
-   ```csharp
-   // Mainlayout.razor
-   @inherits LayoutComponentBase
-
-   <div style="background-color:#001529; height:100vh;">
-       <main>
-           <article class="content px-4">
-               @Body
-           </article>
-       </main>
-   </div>
-
-   <RadzenDialog />
-   <RadzenNotification/>
-   <RadzenContextMenu/>
-   <RadzenTooltip/>
-   ```
-
-2. AfterLoginLayout (로그인 이후 화면)
-
-   ```csharp
-   // AfterLoginLayout.razor
-   @inherits LayoutComponentBase
-
-   <div>
-       <NavMenu />
-
-       <main>
-           <article class="content px-4">
-               @Body
-           </article>
-       </main>
-   </div>
-
-   <RadzenDialog />
-   <RadzenNotification />
-   <RadzenContextMenu />
-   <RadzenTooltip />
-   ```
-
-메뉴 바(네비게이션 바) `NavMenu` 컴포넌트를 기본적으로 포함하고 있는 형태의 레이아웃이다.<br/>
-메뉴 바는 AntDesign 라이브러리에서 제공하는 템플릿을 사용해 만들었으며, 예시 코드는 다음과 같다.
-
-3. NavMenu (로그인 이후 메뉴 바)
-
-   ```csharp
-   // NavMenu.razor
-   @inject NavigationManager NavigationManager
-   @inject Blazored.SessionStorage.ISessionStorageService sessionStorage
-
-   <Header Class="header" Style="width:100%">
-       <div style="display:inline-block;">
-           <h4 style="color:white"><Icon Type="setting" Theme="outline" /> ManagingTool</h4>
-       </div>
-       <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Horizontal" Style="display:inline-block">
-           <MenuItem Key="1" RouterLink="/Lookup_Specific_User">
-               <Icon Type="user" Theme="outline" />
-               Lookup Specific User
-           </MenuItem>
-           <MenuItem Key="2" RouterLink="/Lookup_Multiple_Users">
-               <Icon Type="user" Theme="outline" />
-               Lookup Multiple Users
-           </MenuItem>
-           <MenuItem Key="3" RouterLink="/SendMail">
-               <Icon Type="mail" Theme="outline" />
-               Send Mail
-           </MenuItem>
-           <MenuItem Key="4" RouterLink="/RetrieveItem">
-               <Icon Type="import" Theme="outline" />
-               Retrieve Item
-           </MenuItem>
-           <MenuItem Key="5" RouterLink="/SetCampaign">
-               <Icon Type="calendar" Theme="outline" />
-               Set Campaign
-           </MenuItem>
-           <MenuItem Key="6" @onclick="Logout">
-               <Icon Type="logout" Theme="outline" />
-               Logout
-           </MenuItem>
-       </Menu>
-   </Header>
-
-   @code {
-
-       async Task Logout()
-       {
-           await sessionStorage.RemoveItemAsync("accesstoken");
-           await sessionStorage.RemoveItemAsync("refreshtoken");
-           NavigationManager.NavigateTo("/");
-       }
-   }
-   ```
 
 <br>
 
@@ -392,18 +295,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 예시 코드는 아래와 같으며, 실패 시에 Access Token을 재발급하는 코드이다.
 
 ```csharp
-// TokenManager.cs
 public async Task OnAuthenticationFailedHandler(AuthenticationFailedContext context, JwtBearerOptions options)
 {
+    // 토큰의 유효기간이 만료되어 실패한 경우
     if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
     {
         // 리프레시 토큰 가져오기
-        var refreshToken = context.Request.Headers["refresh_token"].FirstOrDefault();
-        if (refreshToken == null)
-        {
-            context.Response.StatusCode = 401; // Unauthorized
-            return;
-        }
+        GetRefreshToken(context);
 
         try
         {
@@ -594,49 +492,20 @@ await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "Key값");    // 
 
 ```csharp
 // TokenManager.cs
-using System.Net.Http.Headers;
-using System.Net.Http;
-using Microsoft.JSInterop;
 
-namespace ManagingTool.Client
+// 세션 스토리지에서 토큰들을 가져옴
+public async Task<(string, string)> GetTokensFromSessionStorage()
 {
-    public class TokenManager
-    {
-        readonly IJSRuntime _jsRuntime;
+    var accessToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
+    var refreshToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "refreshtoken");
 
-        public TokenManager(IJSRuntime jsRuntime)
-        {
-            _jsRuntime = jsRuntime;
-        }
+    return (accessToken, refreshToken);
+}
 
-        // 세션 스토리지에서 토큰들을 가져옴
-        public async Task<(string, string)> GetTokensFromSessionStorage()
-        {
-            var accessToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "accesstoken");
-            var refreshToken = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "refreshtoken");
-
-            return (accessToken, refreshToken);
-        }
-
-        // Response 헤더에 재발급 토큰이 있는지 확인하고, 세션 스토리지의 액세스 토큰을 갱신
-        public async Task UpdateAccessTokenIfPresent(HttpResponseMessage res)
-        {
-            if (res.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessTokenEnum))
-            {
-                var newAccessToken = newAccessTokenEnum.FirstOrDefault();
-                if (newAccessToken != null || newAccessToken != string.Empty)
-                {
-                    await SetNewAccessTokenToSessionStorage(newAccessToken!);
-                }
-            }
-        }
-
-        // 세션 스토리지의 액세스 토큰을 갱신
-        public async Task SetNewAccessTokenToSessionStorage(string token)
-        {
-            await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "accesstoken", token);
-        }
-    }
+// 세션 스토리지의 액세스 토큰을 갱신
+public async Task SetNewAccessTokenToSessionStorage(string token)
+{
+    await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "accesstoken", token);
 }
 ```
 
@@ -666,13 +535,6 @@ requestMessage.Headers.Remove("헤더명");                                // He
 ```csharp
 // BaseService.cs
 
-// Request Body를 JSON 직렬화하여 Body에 저장
-protected void SerializeReqBody(ref HttpRequestMessage reqMsg, Object reqBody)
-{
-    string requestBody = JsonSerializer.Serialize(reqBody);
-    reqMsg.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-}
-
 // AccessToken과 RefreshToken을 RequestMessage 헤더에 추가
 protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken, string refreshToken)
 {
@@ -682,33 +544,16 @@ protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string ac
 }
 ```
 
-```csharp
-// BaseService를 상속받은 Service 예시
-public async Task<ResponseDTO> Action(RequestDTO request)
-{
-    // RequestMessage 생성
-    var requestMessage = new HttpRequestMessage(HttpMethod.Post, ApiPath);
-    SerializeReqBody(ref requestMessage, request);
-
-    // 헤더에 토큰 추가
-    var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-    AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
-
-    // 요청 전송 및 response 처리...
-    // ...
-}
-```
-
 <br>
 
 ---
 
-## Access Token 갱신하기
+## 응답 헤더에서 재발급 토큰 로드
 
 Access Token이 만료되었지만 Refresh Token이 유효하여 Access Token을 재발급받은 경우,<br>
 본 프로젝트의 서버는 `X-NEW-ACCESS-TOKEN` 헤더에 재발급한 토큰을 추가해 전송한다.
 
-헤더에서 `X-NEW-ACCESS-TOKEN` 값을 가져오는 방법은 아래와 같다.
+헤더에서 값을 가져오는 방법은 아래와 같다.
 
 ```csharp
 req.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessToken); // out 파라미터 newAccessToken으로 값을 로드
@@ -716,7 +561,7 @@ req.Headers.TryGetValues("X-NEW-ACCESS-TOKEN", out var newAccessToken); // out �
 
 ### 예시 코드
 
-아래는 본 프로젝트에서 구현한 예시 코드이다. (상기한 TokenManager 클래스에 구현되어 있다.)
+아래는 본 프로젝트에서 구현한 예시 코드이다.
 
 ```csharp
 // TokenManager.cs
