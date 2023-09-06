@@ -72,6 +72,7 @@ namespace ManagingTool.Server
                 context.Success();
             }
         }
+
         bool GetRefreshToken(AuthenticationFailedContext context, out string token)
         {
             token = string.Empty;

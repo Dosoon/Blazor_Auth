@@ -64,22 +64,26 @@
 
 	async Task OnClickLogin()
 	{
+		// 빈 칸이 있을 때
 		if (email.Equals("") || password.Equals(""))
 		{
 			await ConfirmService.Show("이메일과 비밀번호를 입력해주세요.", "Error", ConfirmButtons.OK);
 			return;
 		}
 
+		// Auth Service에 로그인 요청
 		loading = true;
 		var loginResult = await AuthService.Login(email, password);
 		loading = false;
 
+		// 로그인 실패
 		if (loginResult == null || loginResult.Result != ErrorCode.None)
 		{
 			await ConfirmService.Show("로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.", "Error", ConfirmButtons.OK);
 			return;
 		}
 
+		// 로그인 성공
 		await sessionStorage.SetItemAsStringAsync("accesstoken", loginResult.accessToken);
 		await sessionStorage.SetItemAsStringAsync("refreshtoken", loginResult.refreshToken);
 

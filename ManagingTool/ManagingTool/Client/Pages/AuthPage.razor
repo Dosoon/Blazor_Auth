@@ -7,9 +7,20 @@
 
 
 @code {
+    // 페이지가 렌더링되기 전에 수행
+    protected override async Task OnInitializedAsync()
+    {
+        var (verified, resetToken) = await CheckSession();
 
+        if (verified == false)
+        {
+            await MoveToLogin(resetToken);
+        }
+    }
+
+    // 세션 스토리지의 토큰을 무효화하고 로그인 페이지로 강제 이동
     protected async Task MoveToLogin(bool resetToken = false)
-    {       
+    {
         if (resetToken)
         {
             await sessionStorage.SetItemAsync<string>("accesstoken", "");
@@ -18,6 +29,7 @@
         NavigationManager.NavigateTo("/", true);
     }
 
+    // 세션 토큰이 유효한지 확인
     async Task<(bool, bool)> CheckSession()
     {
         var accessToken = await sessionStorage.GetItemAsync<string>("accesstoken");
@@ -28,15 +40,5 @@
 
         var verified = await AuthService.CheckToken();
         return (verified == ErrorCode.None, true);
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        var (verified, resetToken) = await CheckSession();
-
-        if (verified == false)
-        {
-            await MoveToLogin(resetToken);
-        }
     }
 }
