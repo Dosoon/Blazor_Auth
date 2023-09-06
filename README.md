@@ -793,55 +793,14 @@ Input과 바인딩될 변수는 `@bind-Value`에 지정할 수 있다.
 
 - `CreateReqMsg`
 
-  ```csharp
-  protected async Task<HttpRequestMessage> CreateReqMsg(HttpMethod method, string path, object? body,
-                                                        bool addHeader = true)
-  {
-      var requestMessage = new HttpRequestMessage(method, path);
-
-      // Body 직렬화
-      if (body != null)
-      {
-          SerializeReqBody(ref requestMessage, body);
-      }
-
-      // 헤더에 토큰 추가
-      if (addHeader)
-      {
-          var (accessToken, refreshToken) = await _tokenManager.GetTokensFromSessionStorage();
-          AttachTokensToRequestHeader(ref requestMessage, accessToken, refreshToken);
-      }
-
-      return requestMessage;
-  }
-  ```
-
   Http 메소드 타입, API 경로, 직렬화할 JSON Body, 헤더 추가 여부를 매개변수로 받아 RequestMessage를 생성한다.
 
 - `SerializeReqBody`
 
-  ```csharp
-  // Request Body를 JSON 직렬화하여 Body에 저장
-  void SerializeReqBody(ref HttpRequestMessage reqMsg, object reqBody)
-  {
-      string requestBody = JsonSerializer.Serialize(reqBody);
-      reqMsg.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-  }
-  ```
-
   Object를 Json 직렬화한 다음 요청 바디에 저장한다.
 
 - `AttachTokensToRequestHeader`
-  ```csharp
-  // AccessToken과 RefreshToken을 RequestMessage 헤더에 추가
-  protected void AttachTokensToRequestHeader(ref HttpRequestMessage req, string accessToken,
-                                                                        string refreshToken)
-  {
-      req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-      req.Headers.Remove("refresh_token");
-      req.Headers.Add("refresh_token", refreshToken);
-  }
-  ```
+
   요청 헤더에 토큰을 추가한다.
 
 <br>
@@ -892,79 +851,11 @@ ManagingTool 로그인과 토큰 유효성 검사 요청을 담당한다.
 ManagingTool.Server에서 인증에 사용되는 `TokenValidationParameters` 및<br>
 인증 이벤트 핸들러를 정의한 파일이다.
 
-- 인증 옵션
+- `tokenValidatedParameters`
 
-  ```csharp
-  public TokenValidationParameters tokenValidatedParameters { get; }
+  AddJwtBearer 시에 사용되는 인증 옵션 파라미터이다.
 
-  public JwtBearerConfig()
-  {
-      // 인증 옵션 파라미터 정의
-      tokenValidatedParameters = new TokenValidationParameters
-      {
-          ValidateIssuer = false,
-          ValidateAudience = false,
-          ValidateIssuerSigningKey = true,
-          ValidateLifetime = true,    // 토큰 유효성 검증 여부
-          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("SigningKey_Com2us"))
-                                                      // 비밀 서명 키
-      };
-  }
-  ```
-
-- 인증 실패 시 핸들러
-
-  ```csharp
-  public void OnAuthenticationFailedHandler(AuthenticationFailedContext context,
-                                            JwtBearerOptions options)
-  {
-      if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-      {
-          // 리프레시 토큰 가져오기
-          if (GetRefreshToken(context, out var refreshToken) == false)
-          {
-              context.Response.StatusCode = 401;
-              return;
-          }
-
-          // 리프레시 토큰이 만료되었는지 확인
-          if (IsExpiredToken(context, refreshToken, options))
-          {
-              context.Response.StatusCode = 401;
-              return;
-          }
-
-          // 리프레시 토큰에서 AccountId 가져오기
-          var accountId = TokenManager.GetClaim(refreshToken);
-          if (accountId == 0)
-          {
-              context.Response.StatusCode = 401;
-              return;
-          }
-
-          // DB의 RefreshToken과 비교
-          if (AreEqualWithDBRefreshToken(accountId, refreshToken) == false)
-          {
-              context.Response.StatusCode = 401;
-              return;
-          }
-
-          // 새 액세스 토큰 발급
-          string newAccessToken = TokenManager.CreateToken(true, accountId);
-          context.Response.Headers.Add("X-NEW-ACCESS-TOKEN", newAccessToken);
-
-          // 요청 정상 수행
-          ClaimsIdentity claims = new ClaimsIdentity(new[]
-          {
-              new Claim("AccountId", accountId.ToString()),
-          }, JwtBearerDefaults.AuthenticationScheme);
-
-          context.Principal = new ClaimsPrincipal(new ClaimsIdentity[] { claims });
-
-          context.Success();
-      }
-  }
-  ```
+- `OnAuthenticationFailedHandler`
 
   `Authorization` 헤더에 담긴 Access Token 인증이 실패했을 경우에 수행되는 핸들러이다.<br>
   Refresh Token이 유효하다면 새 Access Token을 재발급하고, 요청을 정상 처리한다.
@@ -979,71 +870,13 @@ ManagingTool.Server의 `TokenManager`는 토큰을 생성하고, 토큰에 담�
 
 - `CreateTokens`
 
-  ```csharp
-  // AccessToken과 RefreshToken 생성
-  public static Tuple<string, string> CreateTokens(Int64 accountId)
-  {
-      var accessToken = CreateToken(true, accountId);
-      var refreshToken = CreateToken(false, accountId);
-
-      return new Tuple<string, string>(accessToken, refreshToken);
-  }
-  ```
-
   Access Token과 Refresh Token을 생성해 리턴한다.
 
 - `CreateToken`
 
-  ```csharp
-  // 토큰 종류에 따라 유효시간을 정하여 생성
-  public static string CreateToken(bool isAccessToken, Int64 accountId)
-  {
-      var tokenHandler = new JwtSecurityTokenHandler();
-
-      // Signing Key와 만료기간 설정
-      var key = Encoding.ASCII.GetBytes(_signingKey);
-      var expires = isAccessToken ? DateTime.UtcNow.AddHours(1) : DateTime.UtcNow.AddHours(6);
-
-      // 토큰 구조체 정의
-      var tokenDescriptor = new SecurityTokenDescriptor
-      {
-          Subject = new ClaimsIdentity(new Claim[]
-          {
-          new Claim("AccountId", accountId.ToString()),
-          }),
-          Expires = expires,
-          SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
-                                                      SecurityAlgorithms.HmacSha256Signature)
-      };
-
-      // 토큰 생성
-      var token = tokenHandler.CreateToken(tokenDescriptor);
-      return tokenHandler.WriteToken(token);
-  }
-  ```
-
   토큰 종류에 따라 만료 기간을 다르게 하여 토큰을 생성한다.
 
 - `GetClaim`
-
-  ```csharp
-  // 토큰에 담긴 정보(Claim) 추출
-  public static Int64 GetClaim(string token)
-  {
-      var handler = new JwtSecurityTokenHandler();
-      var refreshToken = handler.ReadJwtToken(token);
-
-      // AccountId Claim 추출
-      var accountIdClaim = refreshToken.Claims.FirstOrDefault(claim => claim.Type.Equals("AccountId"));
-
-      if (accountIdClaim != null)
-      {
-          return Int64.Parse(accountIdClaim.Value);
-      }
-
-      return 0;
-  }
-  ```
 
   토큰의 페이로드에 담긴 Claim을 추출해낸다.
 
