@@ -61,13 +61,13 @@ namespace ManagingTool.Server
                 string newAccessToken = TokenManager.CreateToken(true, accountId);
                 context.Response.Headers.Add("X-NEW-ACCESS-TOKEN", newAccessToken);
 
-                //// 요청 정상 수행을 위해 Authorization에서 사용할 ClaimsPrincipal을 Context에 추가
-                //ClaimsIdentity claims = new ClaimsIdentity(new[]
-                //{
-                //    new Claim("AccountId", accountId.ToString()),
-                //}, JwtBearerDefaults.AuthenticationScheme);
+                // 요청 정상 수행을 위해 Authorization에서 사용할 ClaimsPrincipal을 Context에 추가
+                ClaimsIdentity claims = new ClaimsIdentity(new[]
+                {
+                    new Claim("AccountId", accountId.ToString()),
+                }, JwtBearerDefaults.AuthenticationScheme);
 
-                //context.Principal = new ClaimsPrincipal(new ClaimsIdentity[] { claims });
+                context.Principal = new ClaimsPrincipal(new ClaimsIdentity[] { claims });
 
                 context.Success();
             }

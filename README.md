@@ -390,7 +390,6 @@ Program.cs에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 인증(*
 
 위 코드에서는 `ValidateIssuer`, `ValidateAudience`는 false로 하고 `ValidateIssuerSigningKey`, `ValidateLifetime`은 true로 했다.<br>
 따라서 Issuer(토큰 발행자), Audience(토큰 대상자)에 대한 검증은 하지 않되, Signing Key와 만료 기간에 대한 검증은 수행한다.<br>
-옵션으로는 서명 키와 토큰의 유효기간만을 검증한다.
 
 사용된 옵션에 대한 설명은 아래와 같으며, 더 많은 옵션은 참고 문서에서 확인할 수 있다.
 
@@ -659,6 +658,11 @@ Blazor Server에서 제공하는 데이터는 실제 DB와 연동되지 않은 �
 
 **API를 호출하거나, 페이지에 진입할 때마다 토큰이 유효한지 인증**한다.<br>
 인증에 실패하면 세션 스토리지의 토큰이 무효화되고, 로그인 화면으로 강제 이동한다.
+
+본 프로젝트는 DB와 연동되어있지 않다.<br>
+로그인 가능한 계정은 이메일 `genie@com2us.com`, 비밀번호 `1234` 이다.
+
+UserData에 대한 Edit UI가 존재하지만, DB가 없기 때문에 별도의 데이터 갱신은 이루어지지 않는다.
 
 <br>
 
