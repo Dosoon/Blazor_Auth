@@ -12,7 +12,7 @@
 6. [Server : 토큰 검증](#server--토큰-검증)
    1. [JwtBearer 옵션 설정](#jwtbearer-옵션-설정)
    2. [JWT에서 Claim 추출](#jwt에서-claim-추출)
-   3. [커스텀 핸들러](#커스텀-핸들러)
+   3. [이벤트 핸들러](#이벤트-핸들러)
 7. [Server : 인증 적용](#server--인증-적용)
    1. [Authorize Attribute](#authorize-attribute)
 8. [Client : 토큰 관리](#client--토큰-관리)
@@ -299,7 +299,26 @@ JWT은 헤더(Header), 페이로드(Payload), 서명(Signature)의 3가지 파�
 - **페이로드** : 전달하려는 정보 (단, 노출될 수 있기 때문에 최소한의 정보만 담아야 함)
 - **서명** : 검증을 위해 서버가 지정한 Signing Key
 
-여기서, 페이로드에 담는 정보를 클레임(`Claim`)이라고 한다.
+여기서, 페이로드에 담는 정보를 클레임(`Claim`)이라고 한다.<br>
+클레임에는 **표준 클레임**과 **사용자 정의 클레임**이 있다.
+
+- **표준 클레임**
+
+  1. iss : Issuer. 토큰 발급자의 정보
+  2. exp : Expiration Time. 토큰이 만료되는 시간
+  3. iat : Issued At. 토큰이 발급된 시간
+  4. nbf : Not Before. 토큰 사용을 허용하기 시작하는 시간
+  5. aud : Audience. 토큰 대상자(토큰을 발급받는 수신자)
+
+- **사용자 정의 클레임**
+
+  본 프로젝트에서는 "`AccountId`"라는 이름의 사용자 정의 클레임을 사용하고 있다.
+
+이 프로젝트에서 발급한 토큰을 실제 디코딩해보면 다음과 같은 결과를 확인할 수 있다.
+
+![](images/Blazor_Auth/027.PNG)
+
+[참고 사이트 : JSON Web Token 온라인 디코딩 사이트](https://jwt.io/)
 
 <br>
 
@@ -367,9 +386,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 ```
 
 Program.cs에서, `AddAuthentication`으로 `JwtBearer`를 추가하고 인증(**`Authentication`**)에 필요한 파라미터를 설정한다.<br>
-위 코드의 옵션으로는 서명 키와 토큰의 유효기간만을 검증한다.
 
-옵션은 아래와 같은 것들이 있으며, 더 많은 옵션은 참고 문서에서 확인할 수 있다.
+위 코드에서는 `ValidateIssuer`, `ValidateAudience`는 false로 하고 `ValidateIssuerSigningKey`, `ValidateLifetime`은 true로 했다.<br>
+따라서 Issuer(토큰 발행자), Audience(토큰 대상자)에 대한 검증은 하지 않되, Signing Key와 만료 기간에 대한 검증은 수행한다.<br>
+옵션으로는 서명 키와 토큰의 유효기간만을 검증한다.
+
+사용된 옵션에 대한 설명은 아래와 같으며, 더 많은 옵션은 참고 문서에서 확인할 수 있다.
 
 | 옵션                     | 설명                                       |
 | ------------------------ | ------------------------------------------ |
@@ -409,11 +431,11 @@ return claim.Value;
 
 ---
 
-## 커스텀 핸들러
+## 이벤트 핸들러
 
 ### JwtBearerEvents
 
-JwtBearer의 `options.Events`에서 인증 성공/실패 상황에 따라 동작을 정의할 수 있다.<br>
+JwtBearer의 인증 성공/실패 이벤트에 따른 동작을 `options.Events`에서 정의할 수 있다.<br>
 람다식 형태로 사용한다.
 
 ```csharp
@@ -457,15 +479,31 @@ HTTP 요청에 대한 인증 및 인가 파이프라인은 아래 이미지와 �
 
 ![](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/index/_static/middleware-pipeline.svg?view=aspnetcore-7.0)
 
-`UseRouting()` -> `UseCors()` -> `UseAuthentication()` -> `UseAuthorization()` ...<br>
-순으로 미들웨어를 거쳐 엔드포인트(각 컨트롤러의 액션)에 도달한다.
+ASP.NET CORE의 미들웨어는 `HttpContext`를 공유하면서<br>
+일반적으로 `UseRouting()` -> `UseCors()` -> `UseAuthentication()` -> `UseAuthorization()` ... 순으로 수행된다.<br>
+(단, 이는 일반적인 순서로, 프로젝트에 따라 순서는 변경될 수 있음)<br>
+
+각 미들웨어는 요청에 관련된 정보를 `HttpContext`에 저장하고 수정하며 엔드포인트(각 컨트롤러의 액션)에 도달한다.<br>
+인증 및 인가(액세스 권한 부여) 미들웨어도 `HttpContext`를 공유한다.
+
+- **인증 미들웨어 (`Authentication`)**
+
+  `Authentication`은 인증 미들웨어로, HTTP 요청의 인증 데이터(ex. JWT 토큰)를 통해 인증된 사용자인지 확인한다.<br>
+  그리고 인증 데이터 속 정보(Claim)들을 추출해 내부적으로 인증 티켓 `AuthenticationTicket`을 생성한다.<br>
+  이 `AuthenticationTicket`의 `ClaimsPrincipal`을 `HttpContext.User`에 추가한 후 `Authorization`으로 전달한다.
+
+- **인가 미들웨어 (`Authorization`)**
+
+  `Authorization`은 인가 미들웨어로, `Authentication`이 `HttpContext.User`에 추가한 `ClaimsPrincipal`을 기반으로<br>
+  엔드포인트에 대한 인가 처리를 수행한다.
 
 <br>
 
-### 인증 미들웨어 : UseAuthentication
+### 인증 미들웨어 동작 : UseAuthentication
 
 인증 미들웨어는 등록된 인증 스키마에 따라 **사용자의 인증 데이터를 식별**하고 Claim을 추출한 다음,<br>
-이후에 인가 미들웨어(`Authorization`)에서 사용할 수 있도록 **`ClaimsPrincipal`을 구성 및 전달**한다.
+내부적으로 `AuthenticationTicket`을 생성한다.<br>
+그리고 Ticket 정보를 인가 미들웨어(`Authorization`)에서 사용할 수 있도록 **`HttpContext`를 통해 전달**한다.
 
 - **인증 스키마**
 
@@ -475,15 +513,15 @@ HTTP 요청에 대한 인증 및 인가 파이프라인은 아래 이미지와 �
 
 - **JwtBearer 스키마**
 
-  본 프로젝트의 경우, `AddJwtBearer`를 호출해 JwtBearer 인증 스키마를 등록했다.<br>
+  본 프로젝트는 `AddJwtBearer`를 호출해 JwtBearer 인증 스키마를 등록했다.<br>
   이 스키마는 요청의 `Authorization` 헤더에 있는 JWT 토큰을 확인한다.<br>
-  이후 JWT의 페이로드에 있는 Claim을 추출해 `ClaimsPrincipal`을 구성한 다음 인가 미들웨어(`Authorization`)로 전달한다.
+  이후 JWT의 페이로드에 있는 정보(Claim)를 추출해 `ClaimsPrincipal`을 구성한 다음 인가 미들웨어(`Authorization`)로 전달한다.
 
 [참고 문서 : MSDN Authentication Concept](https://learn.microsoft.com/ko-kr/aspnet/core/security/authentication/?view=aspnetcore-5.0#authentication-scheme-2)
 
 <br>
 
-### 인가 미들웨어 : UseAuthorization
+### 인가 미들웨어 동작 : UseAuthorization
 
 인가 미들웨어는 인증 미들웨어로부터 제공받은 인증 데이터 `ClaimsPrincipal`을 기반으로<br>
 **엔드포인트에 대한 접근 권한**을 결정한다.
@@ -493,7 +531,7 @@ HTTP 요청에 대한 인증 및 인가 파이프라인은 아래 이미지와 �
 
 <br>
 
-### Authorize Attribute
+### 인가 조건 부여 : Authorize Attribute
 
 `[Authorize]`가 있는 엔드포인트에는 인증된 사용자만 접근 가능하며, 인가 조건이 있다면 이를 충족해야 한다.<br>
 해당 어트리뷰트에는 `AuthenticationSchemes`, `Policy`, `Roles` 등의 조건을 설정할 수 있다.
@@ -560,7 +598,8 @@ await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "Key값");    // 
 Blazor 클라이언트에서 서버로 요청을 보낼 때, Access Token과 Refresh Token<br>
 두 가지 모두를 헤더에 추가해야 한다.
 
-**이때, 인증 토큰은 `Authorization` 헤더에 추가해야 한다.**<br>
+**이때, 액세스 토큰은 `Authorization` 헤더에 추가해야 한다.**<br>
+서버(백엔드)에 등록된 JwtBearer 스키마는 `Authorization` 헤더에서 액세스 토큰을 찾아 인증하기 때문이다.
 
 헤더에 토큰을 저장하는 방법은 아래와 같다.<br>
 
@@ -1009,7 +1048,7 @@ ManagingTool 로그인과 토큰 유효성 검사 요청을 담당한다.
 
 - `Login`
 
-  이메일과 패스워드를 전송받아 POST 메소드로 로그인을 시도한다. 헤더에 토큰을 붙이지 않아도 된다.
+  이메일과 패스워드를 전송받아 POST 메소드로 로그인을 시도한다. 헤더에 토큰을 추가하지 않는다.
 
 ---
 
@@ -1018,7 +1057,7 @@ ManagingTool 로그인과 토큰 유효성 검사 요청을 담당한다.
 로그인 이후 운영 API를 호출할 때 사용되는 서비스이다.<br>
 유저 데이터에 대한 API 호출을 담당한다. 제공되는 데이터는 모두 더미 데이터이다.
 
-모든 요청의 헤더에 토큰 인증이 필요하다.
+모든 요청의 헤더에 토큰을 추가한다.
 
 - `GetUserBasicInfo`
 
